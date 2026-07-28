@@ -28,6 +28,9 @@ function mapProject(db: Record<string, unknown>): Project {
     description: (db.description as string) || "",
     tagId: (db.tag_id as string) || null,
     commission: (db.commission as number) ?? null,
+    githubUser: (db.github_user as string) || null,
+    vercelAccount: (db.vercel_account as string) || null,
+    projectUrl: (db.project_url as string) || null,
     createdAt: db.created_at as string,
     history: Array.isArray(db.history)
       ? (db.history as Record<string, unknown>[]).map(mapHistory)

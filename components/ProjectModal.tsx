@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Project, Tag, HistoryEntry } from "@/lib/types";
-import { X, Smile, Reply, Pencil, Trash2, MoreHorizontal, ChevronRight, Send } from "lucide-react";
+import { Project, Tag, HistoryEntry, ProjectDocument } from "@/lib/types";
+import {
+  X, Smile, Reply, Pencil, Trash2, MoreHorizontal,
+  ChevronRight, Send, Paperclip, Download, ExternalLink,
+  GitBranch, Cloud,
+} from "lucide-react";
 
 interface Props {
   projectId: string;
@@ -26,6 +30,12 @@ function formatTime(iso: string) {
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
+function formatSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 const typeConfig: Record<string, { bg: string }> = {
   create: { bg: "bg-blue-100 text-blue-700" },
   status_change: { bg: "bg-amber-100 text-amber-700" },
@@ -37,6 +47,7 @@ const QUICK_EMOJIS = ["👍", "👎", "❤", "😂", "😮", "😢", "🙏", "�
 
 export default function ProjectModal({ projectId, tags, onClose }: Props) {
   const [project, setProject] = useState<Project | null>(null);
+  const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
@@ -46,10 +57,13 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [emojiPickerId, setEmojiPickerId] = useState<string | null>(null);
   const [showTimeline, setShowTimeline] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [showDocs, setShowDocs] = useState(true);
 
   const backdropRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadProject = useCallback(async () => {
     const res = await fetch(`/api/projects/${projectId}`);
@@ -57,9 +71,15 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
     setLoading(false);
   }, [projectId]);
 
+  const loadDocuments = useCallback(async () => {
+    const res = await fetch(`/api/projects/${projectId}/documents`);
+    if (res.ok) setDocuments(await res.json());
+  }, [projectId]);
+
   useEffect(() => {
     loadProject();
-  }, [loadProject]);
+    loadDocuments();
+  }, [loadProject, loadDocuments]);
 
   useEffect(() => {
     if (chatEndRef.current) {
@@ -120,6 +140,34 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
     setEmojiPickerId(null);
   }
 
+  async function handleUpload(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+
+    for (const file of Array.from(files)) {
+      const formData = new FormData();
+      formData.append("file", file);
+      await fetch(`/api/projects/${projectId}/documents`, {
+        method: "POST",
+        body: formData,
+      });
+    }
+
+    setUploading(false);
+    loadDocuments();
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleDownload(doc: ProjectDocument) {
+    window.open(`/api/projects/${projectId}/documents/${doc.id}/download`, "_blank");
+  }
+
+  async function handleDeleteDoc(docId: string) {
+    if (!confirm("Excluir este documento?")) return;
+    await fetch(`/api/projects/${projectId}/documents/${docId}`, { method: "DELETE" });
+    loadDocuments();
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (editingId) {
       if (e.key === "Enter" && e.ctrlKey) {
@@ -178,6 +226,8 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
   const autoEvents = sortedHistory.filter((h) => h.type !== "note");
   const chatMessages = sortedHistory.filter((h) => h.type === "note");
 
+  const hasLinks = project.githubUser || project.vercelAccount || project.projectUrl;
+
   function getReplyPreview(entryId: string | null | undefined) {
     if (!entryId) return null;
     const entry = project!.history.find((h) => h.id === entryId);
@@ -217,11 +267,115 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
           </button>
         </div>
 
+        {/* Links row */}
+        {hasLinks && (
+          <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 flex items-center gap-3 text-xs shrink-0 flex-wrap">
+            {project.projectUrl && (
+              <a
+                href={project.projectUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-blue-600 hover:underline"
+              >
+                <ExternalLink size={12} />
+                Site
+              </a>
+            )}
+            {project.githubUser && (
+              <a
+                href={`https://github.com/${project.githubUser}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-slate-600 hover:text-slate-900"
+              >
+                <GitBranch size={12} />
+                @{project.githubUser}
+              </a>
+            )}
+            {project.vercelAccount && (
+              <a
+                href={`https://vercel.com/${project.vercelAccount}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-slate-600 hover:text-slate-900"
+              >
+                <Cloud size={12} />
+                {project.vercelAccount}
+              </a>
+            )}
+          </div>
+        )}
+
         {/* Body */}
         <div className="flex-1 overflow-y-auto bg-slate-50">
+          {/* Documents section */}
+          <div className="px-5 pt-4">
+            <button
+              onClick={() => setShowDocs(!showDocs)}
+              className="text-xs font-semibold text-slate-500 uppercase tracking-wider hover:text-slate-700 mb-2 flex items-center gap-1"
+            >
+              <ChevronRight
+                size={14}
+                className={`transition-transform ${showDocs ? "rotate-90" : ""}`}
+              />
+              Documentos
+              <span className="text-slate-400 font-normal normal-case ml-1">
+                ({documents.length})
+              </span>
+            </button>
+            {showDocs && (
+              <div className="mb-4 space-y-2">
+                {documents.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-2">Nenhum documento anexado.</p>
+                ) : (
+                  documents.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-slate-200 text-xs"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Paperclip size={12} className="text-slate-400 shrink-0" />
+                        <span className="truncate font-medium">{doc.fileName}</span>
+                        <span className="text-slate-400 shrink-0">{formatSize(doc.fileSize)}</span>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <button
+                          onClick={() => handleDownload(doc)}
+                          className="p-1 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded transition-colors"
+                          title="Download"
+                        >
+                          <Download size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDoc(doc.id)}
+                          className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                          title="Excluir"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+                <label className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-700 cursor-pointer py-1">
+                  <Paperclip size={12} />
+                  {uploading ? "Enviando..." : "Anexar arquivo"}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    onChange={(e) => handleUpload(e.target.files)}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+
           {/* Timeline section */}
           {autoEvents.length > 0 && (
-            <div className="px-5 pt-4">
+            <div className="px-5">
               <button
                 onClick={() => setShowTimeline(!showTimeline)}
                 className="text-xs font-semibold text-slate-500 uppercase tracking-wider hover:text-slate-700 mb-2 flex items-center gap-1"
@@ -274,9 +428,7 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
               return (
                 <div key={entry.id} className="flex justify-end">
                   <div className="relative group max-w-[80%]">
-                    {/* Bubble */}
                     <div className="bg-emerald-500 text-white rounded-lg rounded-tr-sm px-3 py-2 shadow-sm">
-                      {/* Reply preview */}
                       {replied && (
                         <div className="bg-emerald-600 rounded px-2 py-1 mb-1.5 text-xs opacity-90 border-l-2 border-emerald-300">
                           <p className="font-medium text-[11px]">
@@ -291,7 +443,6 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
                         </div>
                       )}
 
-                      {/* Edit mode */}
                       {isEditing ? (
                         <div>
                           <textarea
@@ -324,12 +475,10 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
                       )}
                     </div>
 
-                    {/* Timestamp */}
                     <p className="text-[10px] text-slate-400 text-right mt-0.5 mr-0.5">
                       {formatTime(entry.date)}
                     </p>
 
-                    {/* Reactions */}
                     {entry.reactions && entry.reactions.length > 0 && (
                       <div className="flex gap-1 mt-0.5 justify-end">
                         {entry.reactions.map((emoji, i) => (
@@ -347,7 +496,6 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
                       </div>
                     )}
 
-                    {/* Action menu (hover/click) */}
                     <div
                       className={`absolute -top-8 right-0 bg-white border border-slate-200 rounded-lg shadow-md flex items-center gap-0.5 px-1 py-0.5 transition-opacity z-10 ${
                         menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
@@ -394,7 +542,6 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
                       >
                         <Trash2 size={14} />
                       </button>
-                      {/* Mobile tap toggle */}
                       <button
                         onClick={(ev) => {
                           ev.stopPropagation();
@@ -407,7 +554,6 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
                       </button>
                     </div>
 
-                    {/* Emoji picker popover */}
                     {emojiOpen && (
                       <div className="absolute -top-10 right-0 bg-white border border-slate-200 rounded-lg shadow-md flex gap-0.5 px-1.5 py-1 z-20">
                         {QUICK_EMOJIS.map((emoji) => (
@@ -434,7 +580,6 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
 
         {/* Input area */}
         <div className="border-t border-slate-200 p-3 shrink-0 bg-white">
-          {/* Reply banner */}
           {replyTo && (
             <div className="mb-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 flex items-start justify-between">
               <div className="min-w-0 flex-1">

@@ -22,6 +22,9 @@ export async function POST(req: NextRequest) {
     description: body.description || "",
     tag_id: body.tagId || null,
     commission: null,
+    github_user: body.githubUser || null,
+    vercel_account: body.vercelAccount || null,
+    project_url: body.projectUrl || null,
     created_at: now,
   });
 
@@ -43,6 +46,9 @@ export async function POST(req: NextRequest) {
     description: body.description || "",
     tagId: body.tagId || null,
     commission: null,
+    githubUser: body.githubUser || null,
+    vercelAccount: body.vercelAccount || null,
+    projectUrl: body.projectUrl || null,
     createdAt: now,
     history: [
       { id: `h-${Date.now()}`, date: now, type: "create", description: "Projeto criado" },

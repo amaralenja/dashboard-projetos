@@ -20,8 +20,20 @@ export interface Project {
   description: string;
   tagId: string | null;
   commission: number | null;
+  githubUser: string | null;
+  vercelAccount: string | null;
+  projectUrl: string | null;
   createdAt: string;
   history: HistoryEntry[];
+}
+
+export interface ProjectDocument {
+  id: string;
+  projectId: string;
+  fileName: string;
+  filePath: string;
+  fileSize: number;
+  createdAt: string;
 }
 
 export interface Withdrawal {

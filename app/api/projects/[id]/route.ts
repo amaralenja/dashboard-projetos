@@ -1,7 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
 import { readData } from "@/lib/data";
-import { HistoryEntry } from "@/lib/types";
+import { HistoryEntry, Project } from "@/lib/types";
+
+function mapProjectRow(p: Record<string, unknown>): Project {
+  return {
+    id: p.id as string,
+    name: p.name as string,
+    description: (p.description as string) || "",
+    tagId: (p.tag_id as string) || null,
+    commission: (p.commission as number) ?? null,
+    githubUser: (p.github_user as string) || null,
+    vercelAccount: (p.vercel_account as string) || null,
+    projectUrl: (p.project_url as string) || null,
+    createdAt: p.created_at as string,
+    history: Array.isArray(p.history)
+      ? (p.history as Record<string, unknown>[]).map((h) => ({
+          id: h.id as string,
+          date: h.date as string,
+          type: h.type as HistoryEntry["type"],
+          description: h.description as string,
+          replyTo: (h.reply_to as string) || null,
+          reactions: (h.reactions as string[]) || [],
+        }))
+      : [],
+  };
+}
 
 function getTagName(tags: { id: string; name: string }[], tagId: string | null): string {
   if (!tagId) return "Sem status";
@@ -26,22 +50,7 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json({
-    id: project.id,
-    name: project.name,
-    description: project.description || "",
-    tagId: project.tag_id || null,
-    commission: project.commission ?? null,
-    createdAt: project.created_at,
-    history: (project.history || []).map((h: Record<string, unknown>) => ({
-      id: h.id,
-      date: h.date,
-      type: h.type,
-      description: h.description,
-      replyTo: h.reply_to || null,
-      reactions: h.reactions || [],
-    })),
-  });
+  return NextResponse.json(mapProjectRow(project as Record<string, unknown>));
 }
 
 export async function PUT(
@@ -154,6 +163,9 @@ export async function PUT(
       description: body.description,
       tag_id: newTagId,
       commission: body.commission !== undefined ? body.commission : undefined,
+      github_user: body.githubUser !== undefined ? body.githubUser : undefined,
+      vercel_account: body.vercelAccount !== undefined ? body.vercelAccount : undefined,
+      project_url: body.projectUrl !== undefined ? body.projectUrl : undefined,
     })
     .eq("id", id);
 
@@ -167,22 +179,7 @@ export async function PUT(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json({
-    id: updated.id,
-    name: updated.name,
-    description: updated.description || "",
-    tagId: updated.tag_id || null,
-    commission: updated.commission ?? null,
-    createdAt: updated.created_at,
-    history: (updated.history || []).map((h: Record<string, unknown>) => ({
-      id: h.id,
-      date: h.date,
-      type: h.type,
-      description: h.description,
-      replyTo: h.reply_to || null,
-      reactions: h.reactions || [],
-    })),
-  });
+  return NextResponse.json(mapProjectRow(updated as Record<string, unknown>));
 }
 
 export async function DELETE(
