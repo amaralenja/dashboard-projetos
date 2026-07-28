@@ -1,6 +1,5 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
-import { getAuthSupabase } from "@/lib/supabase";
-import { readData } from "@/lib/data";
+import { getAuthSupabase, getSupabase } from "@/lib/supabase";
 import { HistoryEntry, Project } from "@/lib/types";
 
 function mapProjectRow(p: Record<string, unknown>): Project {
@@ -147,7 +146,8 @@ export async function PUT(
     if (body.projectUrl !== undefined) updateData.project_url = body.projectUrl || null;
     if (body.imagePath !== undefined) updateData.image_path = body.imagePath || null;
 
-    const { error: updateError } = await supabase
+    const adminClient = getSupabase();
+    const { error: updateError } = await adminClient
       .from("projects")
       .update(updateData)
       .eq("id", id);
