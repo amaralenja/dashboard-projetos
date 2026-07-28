@@ -168,19 +168,15 @@ export async function PUT(
   updateData.project_url = body.projectUrl !== undefined ? (body.projectUrl || null) : undefined;
   updateData.image_path = body.imagePath !== undefined ? (body.imagePath || null) : undefined;
 
-  await supabase
+  const { data: updated, error: updateError } = await supabase
     .from("projects")
     .update(updateData)
-    .eq("id", id);
-
-  const { data: updated } = await supabase
-    .from("projects")
-    .select("*, history:project_history(*)")
     .eq("id", id)
+    .select("*, history:project_history(*)")
     .single();
 
-  if (!updated) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (updateError || !updated) {
+    return NextResponse.json({ error: updateError?.message || "Update failed" }, { status: 500 });
   }
 
   return NextResponse.json(mapProjectRow(updated as Record<string, unknown>));
