@@ -33,6 +33,7 @@ function mapProject(db: Record<string, unknown>): Project {
     vercelAccount: (db.vercel_account as string) || null,
     projectUrl: (db.project_url as string) || null,
     createdAt: db.created_at as string,
+    documentCount: 0,
     history: Array.isArray(db.history)
       ? (db.history as Record<string, unknown>[]).map(mapHistory)
       : [],
@@ -49,7 +50,7 @@ function mapWithdrawal(db: Record<string, unknown>): Withdrawal {
 }
 
 export async function readData(supabase: SupabaseClient): Promise<AppData> {
-  const [projectsRes, tagsRes, withdrawalsRes] = await Promise.all([
+  const [projectsRes, tagsRes, withdrawalsRes, docsRes] = await Promise.all([
     supabase
       .from("projects")
       .select("*, history:project_history(*)")
@@ -57,14 +58,24 @@ export async function readData(supabase: SupabaseClient): Promise<AppData> {
       .order("date", { foreignTable: "project_history", ascending: true }),
     supabase.from("tags").select("*").order("created_at"),
     supabase.from("withdrawals").select("*"),
+    supabase.from("project_documents").select("project_id"),
   ]);
 
   if (projectsRes.error) throw new Error(projectsRes.error.message);
   if (tagsRes.error) throw new Error(tagsRes.error.message);
   if (withdrawalsRes.error) throw new Error(withdrawalsRes.error.message);
 
+  const docCounts: Record<string, number> = {};
+  for (const d of docsRes.data || []) {
+    const pid = d.project_id as string;
+    docCounts[pid] = (docCounts[pid] || 0) + 1;
+  }
+
   const tags = (tagsRes.data || []).map(mapTag);
-  const projects = (projectsRes.data || []).map(mapProject);
+  const projects = (projectsRes.data || []).map((p) => ({
+    ...mapProject(p as Record<string, unknown>),
+    documentCount: docCounts[p.id as string] || 0,
+  }));
   const withdrawals = (withdrawalsRes.data || []).map(mapWithdrawal);
 
   return { projects, tags, withdrawals };

@@ -10,6 +10,7 @@ function mapProjectRow(p: Record<string, unknown>): Project {
     tagId: (p.tag_id as string) || null,
     commission: (p.commission as number) ?? null,
     imagePath: (p.image_path as string) || null,
+    documentCount: 0,
     githubUser: (p.github_user as string) || null,
     vercelAccount: (p.vercel_account as string) || null,
     projectUrl: (p.project_url as string) || null,

@@ -24,6 +24,7 @@ export interface Project {
   vercelAccount: string | null;
   projectUrl: string | null;
   imagePath: string | null;
+  documentCount: number;
   createdAt: string;
   history: HistoryEntry[];
 }

@@ -47,6 +47,11 @@ export async function PUT(req: NextRequest) {
     description: updated.description || "",
     tagId: updated.tag_id || null,
     commission: updated.commission ?? null,
+    githubUser: (updated as Record<string, unknown>).github_user as string || null,
+    vercelAccount: (updated as Record<string, unknown>).vercel_account as string || null,
+    projectUrl: (updated as Record<string, unknown>).project_url as string || null,
+    imagePath: (updated as Record<string, unknown>).image_path as string || null,
+    documentCount: 0,
     createdAt: updated.created_at,
     history: (updated.history || []).map((h: Record<string, unknown>) => ({
       id: h.id,

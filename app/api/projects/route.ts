@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
     vercelAccount: body.vercelAccount || null,
     projectUrl: body.projectUrl || null,
     imagePath: body.imagePath || null,
+    documentCount: 0,
     createdAt: now,
     history: [
       { id: `h-${Date.now()}`, date: now, type: "create", description: "Projeto criado" },
