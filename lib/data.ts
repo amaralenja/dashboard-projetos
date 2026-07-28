@@ -47,13 +47,20 @@ function mapWithdrawal(db: Record<string, unknown>): Withdrawal {
   };
 }
 
-export async function readData(supabase?: SupabaseClient): Promise<AppData> {
-  const client = supabase;
+export async function readData(supabase: SupabaseClient): Promise<AppData> {
   const [projectsRes, tagsRes, withdrawalsRes] = await Promise.all([
-    client!.from("projects").select("*, history:project_history(*)").order("created_at", { foreignTable: "project_history", ascending: true }),
-    client!.from("tags").select("*").order("created_at"),
-    client!.from("withdrawals").select("*"),
+    supabase
+      .from("projects")
+      .select("*, history:project_history(*)")
+      .order("created_at", { ascending: false })
+      .order("date", { foreignTable: "project_history", ascending: true }),
+    supabase.from("tags").select("*").order("created_at"),
+    supabase.from("withdrawals").select("*"),
   ]);
+
+  if (projectsRes.error) throw new Error(projectsRes.error.message);
+  if (tagsRes.error) throw new Error(tagsRes.error.message);
+  if (withdrawalsRes.error) throw new Error(withdrawalsRes.error.message);
 
   const tags = (tagsRes.data || []).map(mapTag);
   const projects = (projectsRes.data || []).map(mapProject);
@@ -62,9 +69,8 @@ export async function readData(supabase?: SupabaseClient): Promise<AppData> {
   return { projects, tags, withdrawals };
 }
 
-export async function seedDefaultTags(supabase?: SupabaseClient): Promise<void> {
-  const client = supabase;
-  const { data } = await client!.from("tags").select("id").limit(1);
+export async function seedDefaultTags(supabase: SupabaseClient): Promise<void> {
+  const { data } = await supabase.from("tags").select("id").limit(1);
   if (data && data.length > 0) return;
 
   const defaults = [
@@ -75,5 +81,5 @@ export async function seedDefaultTags(supabase?: SupabaseClient): Promise<void> 
     { id: "tag-5", name: "Cancelado", color: "#ef4444", is_completing: false },
   ];
 
-  await client!.from("tags").upsert(defaults, { onConflict: "id" });
+  await supabase.from("tags").upsert(defaults, { onConflict: "id" });
 }

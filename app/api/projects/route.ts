@@ -4,10 +4,14 @@ import { readData, seedDefaultTags } from "@/lib/data";
 import { Project } from "@/lib/types";
 
 export async function GET() {
-  const supabase = await getAuthSupabase();
-  await seedDefaultTags(supabase);
-  const data = await readData(supabase);
-  return NextResponse.json(data.projects);
+  try {
+    const supabase = await getAuthSupabase();
+    await seedDefaultTags(supabase);
+    const data = await readData(supabase);
+    return NextResponse.json(data.projects);
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Erro ao carregar" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -35,13 +39,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: projectError.message }, { status: 500 });
   }
 
-  await supabase.from("project_history").insert({
+  const { error: historyError } = await supabase.from("project_history").insert({
     id: `h-${Date.now()}`,
     project_id: projectId,
     date: now,
     type: "create",
     description: "Projeto criado",
   });
+
+  if (historyError) {
+    return NextResponse.json({ error: historyError.message }, { status: 500 });
+  }
 
   const project: Project = {
     id: projectId,

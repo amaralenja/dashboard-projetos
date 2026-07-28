@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabase } from "@/lib/supabase";
+import { getAuthSupabase } from "@/lib/supabase";
 import { ProjectDocument } from "@/lib/types";
 
 export async function GET(
@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = getSupabase();
+  const supabase = await getAuthSupabase();
 
   const { data, error } = await supabase
     .from("project_documents")
@@ -36,7 +36,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = getSupabase();
+  const supabase = await getAuthSupabase();
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;

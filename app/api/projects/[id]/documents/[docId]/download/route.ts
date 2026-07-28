@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabase } from "@/lib/supabase";
+import { getAuthSupabase } from "@/lib/supabase";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; docId: string }> }
 ) {
   const { id, docId } = await params;
-  const supabase = getSupabase();
+  const supabase = await getAuthSupabase();
 
   const { data: doc, error } = await supabase
     .from("project_documents")
