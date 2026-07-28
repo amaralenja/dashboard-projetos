@@ -51,6 +51,10 @@ export async function PUT(req: NextRequest) {
     vercelAccount: (updated as Record<string, unknown>).vercel_account as string || null,
     projectUrl: (updated as Record<string, unknown>).project_url as string || null,
     imagePath: (updated as Record<string, unknown>).image_path as string || null,
+    githubUrl: (updated as Record<string, unknown>).github_url as string || null,
+    dbName: (updated as Record<string, unknown>).db_name as string || null,
+    dbAccess: (updated as Record<string, unknown>).db_access as string || null,
+    ownerPhone: (updated as Record<string, unknown>).owner_phone as string || null,
     documentCount: 0,
     createdAt: updated.created_at,
     history: (updated.history || []).map((h: Record<string, unknown>) => ({

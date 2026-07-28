@@ -32,6 +32,10 @@ function mapProject(db: Record<string, unknown>): Project {
     githubUser: (db.github_user as string) || null,
     vercelAccount: (db.vercel_account as string) || null,
     projectUrl: (db.project_url as string) || null,
+    githubUrl: (db.github_url as string) || null,
+    dbName: (db.db_name as string) || null,
+    dbAccess: (db.db_access as string) || null,
+    ownerPhone: (db.owner_phone as string) || null,
     createdAt: db.created_at as string,
     documentCount: 0,
     history: Array.isArray(db.history)

@@ -21,9 +21,13 @@ export interface Project {
   tagId: string | null;
   commission: number | null;
   githubUser: string | null;
+  githubUrl: string | null;
   vercelAccount: string | null;
   projectUrl: string | null;
   imagePath: string | null;
+  dbName: string | null;
+  dbAccess: string | null;
+  ownerPhone: string | null;
   documentCount: number;
   createdAt: string;
   history: HistoryEntry[];

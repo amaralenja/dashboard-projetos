@@ -5,7 +5,7 @@ import { useState, useRef } from "react";
 import { Project } from "@/lib/types";
 import ProjectModal from "@/components/ProjectModal";
 import { fetchProjects, fetchTags, queryKeys } from "@/lib/queries";
-import { GitBranch, Cloud, ExternalLink, Clock, Plus, Pencil, Trash2, AlertCircle, FolderKanban, ImageIcon, Upload, FileText, MessageSquare, Paperclip } from "lucide-react";
+import { GitBranch, Cloud, ExternalLink, Clock, Plus, Pencil, Trash2, AlertCircle, FolderKanban, ImageIcon, Upload, FileText, MessageSquare, Paperclip, Database, Phone } from "lucide-react";
 
 const GITHUB_PRESET = "amaralenja";
 const VERCEL_PRESET = "amaralenja";
@@ -47,6 +47,10 @@ export default function ProjetosPage() {
   const [vercelCustom, setVercelCustom] = useState("");
 
   const [projectUrl, setProjectUrl] = useState("");
+  const [githubUrl, setGithubUrl] = useState("");
+  const [dbName, setDbName] = useState("");
+  const [dbAccess, setDbAccess] = useState("");
+  const [ownerPhone, setOwnerPhone] = useState("");
 
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
@@ -78,6 +82,10 @@ export default function ProjetosPage() {
     setVercelAccount(VERCEL_PRESET);
     setVercelCustom("");
     setProjectUrl("");
+    setGithubUrl("");
+    setDbName("");
+    setDbAccess("");
+    setOwnerPhone("");
     setCoverFile(null);
     setCoverPreview(null);
     setExistingImagePath(null);
@@ -136,6 +144,10 @@ export default function ProjetosPage() {
     }
 
     setProjectUrl(p.projectUrl || "");
+    setGithubUrl(p.githubUrl || "");
+    setDbName(p.dbName || "");
+    setDbAccess(p.dbAccess || "");
+    setOwnerPhone(p.ownerPhone || "");
     setExistingImagePath(p.imagePath || null);
     setCoverFile(null);
     setCoverPreview(null);
@@ -187,6 +199,10 @@ export default function ProjetosPage() {
       githubUser: getFinalGithub(),
       vercelAccount: getFinalVercel(),
       projectUrl: projectUrl.trim() || null,
+      githubUrl: githubUrl.trim() || null,
+      dbName: dbName.trim() || null,
+      dbAccess: dbAccess.trim() || null,
+      ownerPhone: ownerPhone.trim() || null,
       imagePath: imagePath || null,
     };
 
@@ -420,6 +436,60 @@ export default function ProjetosPage() {
                     className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
+
+                <div className="mt-3">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    URL do GitHub
+                  </label>
+                  <input
+                    type="url"
+                    value={githubUrl}
+                    onChange={(e) => setGithubUrl(e.target.value)}
+                    placeholder="https://github.com/..."
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-4">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Banco de dados & Contato</p>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Nome do Banco
+                  </label>
+                  <input
+                    value={dbName}
+                    onChange={(e) => setDbName(e.target.value)}
+                    placeholder="Ex: postgresql-abc123"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+
+                <div className="mt-3">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Acessos do Banco
+                  </label>
+                  <textarea
+                    value={dbAccess}
+                    onChange={(e) => setDbAccess(e.target.value)}
+                    placeholder="host / user / senha / porta..."
+                    rows={3}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+
+                <div className="mt-3">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Telefone do Dono
+                  </label>
+                  <input
+                    value={ownerPhone}
+                    onChange={(e) => setOwnerPhone(e.target.value)}
+                    placeholder="(11) 99999-9999"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
               </div>
 
               <div className="flex gap-3 justify-end pt-2">
@@ -554,6 +624,30 @@ export default function ProjetosPage() {
                       </a>
                     )}
                   </div>
+
+                  {/* DB & Contact info */}
+                  {(p.githubUrl || p.dbName || p.dbAccess || p.ownerPhone) && (
+                    <div className="bg-slate-50 rounded-lg px-3 py-2 mb-2 space-y-1">
+                      {p.githubUrl && (
+                        <a href={p.githubUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 text-[10px] text-blue-600 hover:underline">
+                          <GitBranch size={10} />{p.githubUrl}
+                        </a>
+                      )}
+                      {p.dbName && (
+                        <p className="flex items-center gap-1.5 text-[10px] text-slate-600">
+                          <Database size={10} />{p.dbName}
+                        </p>
+                      )}
+                      {p.dbAccess && (
+                        <p className="text-[10px] text-slate-500 line-clamp-1" title={p.dbAccess}>{p.dbAccess}</p>
+                      )}
+                      {p.ownerPhone && (
+                        <p className="flex items-center gap-1.5 text-[10px] text-slate-600">
+                          <Phone size={10} />{p.ownerPhone}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Actions */}
                   <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100 mt-auto">

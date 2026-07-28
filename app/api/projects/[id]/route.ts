@@ -10,6 +10,10 @@ function mapProjectRow(p: Record<string, unknown>): Project {
     tagId: (p.tag_id as string) || null,
     commission: (p.commission as number) ?? null,
     imagePath: (p.image_path as string) || null,
+    githubUrl: (p.github_url as string) || null,
+    dbName: (p.db_name as string) || null,
+    dbAccess: (p.db_access as string) || null,
+    ownerPhone: (p.owner_phone as string) || null,
     documentCount: 0,
     githubUser: (p.github_user as string) || null,
     vercelAccount: (p.vercel_account as string) || null,
@@ -145,6 +149,10 @@ export async function PUT(
     if (body.githubUser !== undefined) updateData.github_user = body.githubUser || null;
     if (body.vercelAccount !== undefined) updateData.vercel_account = body.vercelAccount || null;
     if (body.projectUrl !== undefined) updateData.project_url = body.projectUrl || null;
+    if (body.githubUrl !== undefined) updateData.github_url = body.githubUrl || null;
+    if (body.dbName !== undefined) updateData.db_name = body.dbName || null;
+    if (body.dbAccess !== undefined) updateData.db_access = body.dbAccess || null;
+    if (body.ownerPhone !== undefined) updateData.owner_phone = body.ownerPhone || null;
     if (body.imagePath !== undefined) updateData.image_path = body.imagePath || null;
 
     const adminClient = getSupabase();
