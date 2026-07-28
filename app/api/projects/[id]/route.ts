@@ -156,17 +156,22 @@ export async function PUT(
     });
   }
 
+  const updateData: Record<string, unknown> = {
+    name: body.name,
+    description: body.description,
+    tag_id: newTagId,
+  };
+  if (body.commission !== undefined) updateData.commission = body.commission;
+  if (body.githubUser) updateData.github_user = body.githubUser;
+  else if (body.githubUser === null && body.githubUser !== undefined) updateData.github_user = null;
+  if (body.vercelAccount) updateData.vercel_account = body.vercelAccount;
+  else if (body.vercelAccount === null && body.vercelAccount !== undefined) updateData.vercel_account = null;
+  if (body.projectUrl) updateData.project_url = body.projectUrl;
+  else if (body.projectUrl === null && body.projectUrl !== undefined) updateData.project_url = null;
+
   await supabase
     .from("projects")
-    .update({
-      name: body.name,
-      description: body.description,
-      tag_id: newTagId,
-      commission: body.commission !== undefined ? body.commission : undefined,
-      github_user: body.githubUser !== undefined ? body.githubUser : undefined,
-      vercel_account: body.vercelAccount !== undefined ? body.vercelAccount : undefined,
-      project_url: body.projectUrl !== undefined ? body.projectUrl : undefined,
-    })
+    .update(updateData)
     .eq("id", id);
 
   const { data: updated } = await supabase

@@ -16,17 +16,19 @@ export async function POST(req: NextRequest) {
   const now = new Date().toISOString();
   const projectId = `proj-${Date.now()}`;
 
-  const { error: projectError } = await supabase.from("projects").insert({
+  const insertData: Record<string, unknown> = {
     id: projectId,
     name: body.name || "",
     description: body.description || "",
     tag_id: body.tagId || null,
     commission: null,
-    github_user: body.githubUser || null,
-    vercel_account: body.vercelAccount || null,
-    project_url: body.projectUrl || null,
     created_at: now,
-  });
+  };
+  if (body.githubUser) insertData.github_user = body.githubUser;
+  if (body.vercelAccount) insertData.vercel_account = body.vercelAccount;
+  if (body.projectUrl) insertData.project_url = body.projectUrl;
+
+  const { error: projectError } = await supabase.from("projects").insert(insertData);
 
   if (projectError) {
     return NextResponse.json({ error: projectError.message }, { status: 500 });
