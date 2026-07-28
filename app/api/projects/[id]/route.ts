@@ -157,20 +157,16 @@ export async function PUT(
     });
   }
 
-  const updateData: Record<string, unknown> = {
-    name: body.name,
-    description: body.description,
-    tag_id: newTagId,
-  };
-  if (body.commission !== undefined) updateData.commission = body.commission;
-  if (body.githubUser) updateData.github_user = body.githubUser;
-  else if (body.githubUser === null && body.githubUser !== undefined) updateData.github_user = null;
-  if (body.vercelAccount) updateData.vercel_account = body.vercelAccount;
-  else if (body.vercelAccount === null && body.vercelAccount !== undefined) updateData.vercel_account = null;
-  if (body.projectUrl) updateData.project_url = body.projectUrl;
-  else if (body.projectUrl === null && body.projectUrl !== undefined) updateData.project_url = null;
-  if (body.imagePath) updateData.image_path = body.imagePath;
-  else if (body.imagePath === null && body.imagePath !== undefined) updateData.image_path = null;
+  const updateData: Record<string, unknown> = {};
+
+  if (body.name !== undefined) updateData.name = body.name;
+  if (body.description !== undefined) updateData.description = body.description;
+  updateData.tag_id = newTagId;
+  updateData.commission = body.commission !== undefined ? body.commission : undefined;
+  updateData.github_user = body.githubUser !== undefined ? (body.githubUser || null) : undefined;
+  updateData.vercel_account = body.vercelAccount !== undefined ? (body.vercelAccount || null) : undefined;
+  updateData.project_url = body.projectUrl !== undefined ? (body.projectUrl || null) : undefined;
+  updateData.image_path = body.imagePath !== undefined ? (body.imagePath || null) : undefined;
 
   await supabase
     .from("projects")
