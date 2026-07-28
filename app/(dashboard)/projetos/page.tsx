@@ -169,8 +169,15 @@ export default function ProjetosPage() {
         if (uploadRes.ok) {
           const uploadData = await uploadRes.json();
           imagePath = uploadData.path;
+        } else {
+          const err = await uploadRes.json();
+          throw new Error(err.error || "Erro ao enviar imagem");
         }
-      } catch {}
+      } catch (err) {
+        setFormError(err instanceof Error ? err.message : "Erro ao enviar imagem");
+        setSaving(false);
+        return;
+      }
     }
 
     const body = {

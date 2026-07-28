@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthSupabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
-  const supabase = await getAuthSupabase();
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
 
@@ -16,6 +15,8 @@ export async function POST(req: NextRequest) {
 
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
+
+  const supabase = getSupabase();
 
   const { error: uploadError } = await supabase.storage
     .from("project-docs")
