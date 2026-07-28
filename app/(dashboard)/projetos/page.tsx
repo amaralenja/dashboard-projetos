@@ -1,34 +1,41 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Project, Tag } from "@/lib/types";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { Project } from "@/lib/types";
 import ProjectModal from "@/components/ProjectModal";
+import { fetchProjects, fetchTags, queryKeys } from "@/lib/queries";
+
+function RowSkeleton() {
+  return (
+    <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200 animate-pulse">
+      <div className="h-5 bg-slate-200 rounded w-48 mb-2" />
+      <div className="h-3 bg-slate-100 rounded w-72" />
+    </div>
+  );
+}
 
 export default function ProjetosPage() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [modalProjectId, setModalProjectId] = useState<string | null>(null);
-
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Project | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [tagId, setTagId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const { data: projects = [], isLoading: loadingProjects } = useQuery({
+    queryKey: queryKeys.projects,
+    queryFn: fetchProjects,
+  });
 
-  async function loadData() {
-    const [pRes, tRes] = await Promise.all([
-      fetch("/api/projects"),
-      fetch("/api/tags"),
-    ]);
-    setProjects(await pRes.json());
-    setTags(await tRes.json());
-    setLoading(false);
-  }
+  const { data: tags = [], isLoading: loadingTags } = useQuery({
+    queryKey: queryKeys.tags,
+    queryFn: fetchTags,
+  });
+
+  const loading = loadingProjects || loadingTags;
 
   function openNew() {
     setEditing(null);
@@ -49,6 +56,7 @@ export default function ProjetosPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
+    setSaving(true);
 
     if (editing) {
       await fetch(`/api/projects/${editing.id}`, {
@@ -64,21 +72,20 @@ export default function ProjetosPage() {
       });
     }
 
+    queryClient.invalidateQueries({ queryKey: queryKeys.projects });
+    setSaving(false);
     setShowForm(false);
-    loadData();
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Excluir este projeto?")) return;
     await fetch(`/api/projects/${id}`, { method: "DELETE" });
-    loadData();
+    queryClient.invalidateQueries({ queryKey: queryKeys.projects });
   }
 
   function getTag(id: string | null) {
     return tags.find((t) => t.id === id);
   }
-
-  if (loading) return <p className="text-slate-500">Carregando...</p>;
 
   return (
     <div>
@@ -113,7 +120,7 @@ export default function ProjetosPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Descrição
+                  Descricao
                 </label>
                 <textarea
                   value={description}
@@ -149,7 +156,8 @@ export default function ProjetosPage() {
                 </button>
                 <button
                   type="submit"
-                  className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
+                  disabled={saving}
+                  className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors disabled:opacity-50"
                 >
                   {editing ? "Salvar" : "Criar"}
                 </button>
@@ -159,7 +167,11 @@ export default function ProjetosPage() {
         </div>
       )}
 
-      {projects.length === 0 ? (
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map((i) => <RowSkeleton key={i} />)}
+        </div>
+      ) : projects.length === 0 ? (
         <div className="bg-white rounded-xl p-8 shadow-sm border border-slate-200 text-center">
           <p className="text-slate-400">Nenhum projeto cadastrado.</p>
           <button

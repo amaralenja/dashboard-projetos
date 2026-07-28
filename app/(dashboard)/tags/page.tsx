@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Tag } from "@/lib/types";
+import { fetchTags, queryKeys } from "@/lib/queries";
 
 const PRESET_COLORS = [
   "#ef4444", "#f97316", "#f59e0b", "#eab308", "#22c55e",
@@ -9,10 +11,17 @@ const PRESET_COLORS = [
   "#d946ef", "#ec4899", "#6b7280", "#1e293b",
 ];
 
-export default function TagsPage() {
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [loading, setLoading] = useState(true);
+function CardSkeleton() {
+  return (
+    <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200 animate-pulse flex items-center gap-3">
+      <div className="w-4 h-4 rounded-full bg-slate-200 shrink-0" />
+      <div className="h-4 bg-slate-200 rounded w-28" />
+    </div>
+  );
+}
 
+export default function TagsPage() {
+  const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Tag | null>(null);
   const [name, setName] = useState("");
@@ -20,15 +29,10 @@ export default function TagsPage() {
   const [isCompleting, setIsCompleting] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadTags();
-  }, []);
-
-  async function loadTags() {
-    const res = await fetch("/api/tags");
-    setTags(await res.json());
-    setLoading(false);
-  }
+  const { data: tags = [], isLoading } = useQuery({
+    queryKey: queryKeys.tags,
+    queryFn: fetchTags,
+  });
 
   function openNew() {
     setEditing(null);
@@ -65,18 +69,16 @@ export default function TagsPage() {
       });
     }
 
+    queryClient.invalidateQueries({ queryKey: queryKeys.tags });
     setSaving(false);
     setShowForm(false);
-    loadTags();
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Excluir esta tag? Projetos com ela perderão o status.")) return;
+    if (!confirm("Excluir esta tag? Projetos com ela perdera~o o status.")) return;
     await fetch(`/api/tags/${id}`, { method: "DELETE" });
-    loadTags();
+    queryClient.invalidateQueries({ queryKey: queryKeys.tags });
   }
-
-  if (loading) return <p className="text-slate-500">Carregando...</p>;
 
   return (
     <div>
@@ -107,7 +109,7 @@ export default function TagsPage() {
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                   autoFocus
-                  placeholder='Ex: "Em andamento", "Concluído"'
+                  placeholder='Ex: "Em andamento", "Concluido"'
                 />
               </div>
 
@@ -149,7 +151,7 @@ export default function TagsPage() {
                 <span>
                   Marcar como tag finalizadora
                   <span className="block text-xs text-slate-400">
-                    Projetos com esta tag poderão receber comissão
+                    Projetos com esta tag podera~o receber comissa~o
                   </span>
                 </span>
               </label>
@@ -175,7 +177,11 @@ export default function TagsPage() {
         </div>
       )}
 
-      {tags.length === 0 ? (
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => <CardSkeleton key={i} />)}
+        </div>
+      ) : tags.length === 0 ? (
         <div className="bg-white rounded-xl p-8 shadow-sm border border-slate-200 text-center">
           <p className="text-slate-400">Nenhuma tag cadastrada.</p>
         </div>

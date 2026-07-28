@@ -6,6 +6,7 @@ import { createBrowserClient } from "@supabase/ssr";
 import { LayoutDashboard, FolderKanban, Tags, DollarSign, FileText, LogOut, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import QueryProvider from "@/components/QueryProvider";
 
 const links = [
   { href: "/", label: "Inicio", icon: LayoutDashboard },
@@ -85,7 +86,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto p-6">{children}</main>
+      <main className="flex-1 overflow-y-auto p-6">
+        <QueryProvider>{children}</QueryProvider>
+      </main>
     </div>
   );
 }

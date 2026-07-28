@@ -1,33 +1,50 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Project, Tag, Withdrawal } from "@/lib/types";
+import { useState } from "react";
+import { Project } from "@/lib/types";
 import ProjectModal from "@/components/ProjectModal";
+import { fetchProjects, fetchTags, fetchWithdrawals, queryKeys } from "@/lib/queries";
+
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 animate-pulse">
+      <div className="h-4 bg-slate-200 rounded w-24 mb-2" />
+      <div className="h-8 bg-slate-200 rounded w-16" />
+    </div>
+  );
+}
+
+function TableSkeleton() {
+  return (
+    <div className="space-y-3 animate-pulse">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="h-10 bg-slate-100 rounded" />
+      ))}
+    </div>
+  );
+}
 
 export default function Home() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
-  const [loading, setLoading] = useState(true);
   const [modalProjectId, setModalProjectId] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      const [pRes, tRes, wRes] = await Promise.all([
-        fetch("/api/projects"),
-        fetch("/api/tags"),
-        fetch("/api/withdrawals"),
-      ]);
-      setProjects(await pRes.json());
-      setTags(await tRes.json());
-      setWithdrawals(await wRes.json());
-      setLoading(false);
-    }
-    load();
-  }, []);
+  const { data: projects = [], isLoading: loadingProjects } = useQuery({
+    queryKey: queryKeys.projects,
+    queryFn: fetchProjects,
+  });
 
-  if (loading) return <p className="text-slate-500">Carregando...</p>;
+  const { data: tags = [], isLoading: loadingTags } = useQuery({
+    queryKey: queryKeys.tags,
+    queryFn: fetchTags,
+  });
+
+  const { data: withdrawals = [], isLoading: loadingWithdrawals } = useQuery({
+    queryKey: queryKeys.withdrawals,
+    queryFn: fetchWithdrawals,
+  });
+
+  const loading = loadingProjects || loadingTags || loadingWithdrawals;
 
   const completingIds = tags.filter((t) => t.isCompleting).map((t) => t.id);
   const completedProjects = projects.filter(
@@ -47,31 +64,39 @@ export default function Home() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">Início</h2>
+      <h2 className="text-2xl font-bold mb-6">Inicio</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
-          <p className="text-sm text-slate-500">Total de Projetos</p>
-          <p className="text-3xl font-bold mt-1">{projects.length}</p>
-        </div>
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
-          <p className="text-sm text-slate-500">Projetos Concluídos</p>
-          <p className="text-3xl font-bold mt-1 text-green-600">
-            {completedProjects.length}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
-          <p className="text-sm text-slate-500">Comissões Acumuladas</p>
-          <p className="text-3xl font-bold mt-1 text-blue-600">
-            R$ {totalCommission.toFixed(2)}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
-          <p className="text-sm text-slate-500">Saldo Disponível</p>
-          <p className="text-3xl font-bold mt-1 text-emerald-600">
-            R$ {balance.toFixed(2)}
-          </p>
-        </div>
+        {loading ? (
+          <>
+            <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
+          </>
+        ) : (
+          <>
+            <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+              <p className="text-sm text-slate-500">Total de Projetos</p>
+              <p className="text-3xl font-bold mt-1">{projects.length}</p>
+            </div>
+            <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+              <p className="text-sm text-slate-500">Projetos Concluidos</p>
+              <p className="text-3xl font-bold mt-1 text-green-600">
+                {completedProjects.length}
+              </p>
+            </div>
+            <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+              <p className="text-sm text-slate-500">Comissoes Acumuladas</p>
+              <p className="text-3xl font-bold mt-1 text-blue-600">
+                R$ {totalCommission.toFixed(2)}
+              </p>
+            </div>
+            <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+              <p className="text-sm text-slate-500">Saldo Disponivel</p>
+              <p className="text-3xl font-bold mt-1 text-emerald-600">
+                R$ {balance.toFixed(2)}
+              </p>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
@@ -84,7 +109,9 @@ export default function Home() {
             Ver todos
           </Link>
         </div>
-        {projects.length === 0 ? (
+        {loading ? (
+          <TableSkeleton />
+        ) : projects.length === 0 ? (
           <p className="text-slate-400 text-sm">
             Nenhum projeto cadastrado ainda.
           </p>

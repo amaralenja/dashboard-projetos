@@ -1,33 +1,50 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Project, Tag, Withdrawal } from "@/lib/types";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { fetchProjects, fetchTags, fetchWithdrawals, queryKeys } from "@/lib/queries";
+
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 animate-pulse">
+      <div className="h-4 bg-slate-200 rounded w-28 mb-2" />
+      <div className="h-8 bg-slate-200 rounded w-24" />
+    </div>
+  );
+}
+
+function TableSkeleton() {
+  return (
+    <div className="space-y-3 animate-pulse">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="h-12 bg-slate-100 rounded" />
+      ))}
+    </div>
+  );
+}
 
 export default function ComissoesPage() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
-  const [loading, setLoading] = useState(true);
-
+  const queryClient = useQueryClient();
   const [showWithdrawForm, setShowWithdrawForm] = useState(false);
   const [wdlDate, setWdlDate] = useState(new Date().toISOString().split("T")[0]);
   const [wdlAmount, setWdlAmount] = useState("");
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const { data: projects = [], isLoading: loadingProjects } = useQuery({
+    queryKey: queryKeys.projects,
+    queryFn: fetchProjects,
+  });
 
-  async function loadData() {
-    const [pRes, tRes, wRes] = await Promise.all([
-      fetch("/api/projects"),
-      fetch("/api/tags"),
-      fetch("/api/withdrawals"),
-    ]);
-    setProjects(await pRes.json());
-    setTags(await tRes.json());
-    setWithdrawals(await wRes.json());
-    setLoading(false);
-  }
+  const { data: tags = [], isLoading: loadingTags } = useQuery({
+    queryKey: queryKeys.tags,
+    queryFn: fetchTags,
+  });
+
+  const { data: withdrawals = [], isLoading: loadingWithdrawals } = useQuery({
+    queryKey: queryKeys.withdrawals,
+    queryFn: fetchWithdrawals,
+  });
+
+  const loading = loadingProjects || loadingTags || loadingWithdrawals;
 
   async function setCommission(projectId: string, value: number | null) {
     await fetch("/api/commissions", {
@@ -35,7 +52,7 @@ export default function ComissoesPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectId, commission: value }),
     });
-    loadData();
+    queryClient.invalidateQueries({ queryKey: queryKeys.projects });
   }
 
   async function handleWithdraw(e: React.FormEvent) {
@@ -49,13 +66,11 @@ export default function ComissoesPage() {
       body: JSON.stringify({ date: wdlDate, amount }),
     });
 
+    queryClient.invalidateQueries({ queryKey: queryKeys.withdrawals });
     setWdlAmount("");
     setWdlDate(new Date().toISOString().split("T")[0]);
     setShowWithdrawForm(false);
-    loadData();
   }
-
-  if (loading) return <p className="text-slate-500">Carregando...</p>;
 
   const completingIds = tags.filter((t) => t.isCompleting).map((t) => t.id);
   const completedProjects = projects.filter(
@@ -72,28 +87,34 @@ export default function ComissoesPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">Comissões</h2>
+        <h2 className="text-2xl font-bold">Comissoes</h2>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
-          <p className="text-sm text-slate-500">Total em Comissões</p>
-          <p className="text-3xl font-bold mt-1 text-blue-600">
-            R$ {totalCommission.toFixed(2)}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
-          <p className="text-sm text-slate-500">Total Sacado</p>
-          <p className="text-3xl font-bold mt-1 text-orange-600">
-            R$ {totalWithdrawn.toFixed(2)}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
-          <p className="text-sm text-slate-500">Saldo Atual</p>
-          <p className="text-3xl font-bold mt-1 text-emerald-600">
-            R$ {balance.toFixed(2)}
-          </p>
-        </div>
+        {loading ? (
+          <><SkeletonCard /><SkeletonCard /><SkeletonCard /></>
+        ) : (
+          <>
+            <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+              <p className="text-sm text-slate-500">Total em Comissoes</p>
+              <p className="text-3xl font-bold mt-1 text-blue-600">
+                R$ {totalCommission.toFixed(2)}
+              </p>
+            </div>
+            <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+              <p className="text-sm text-slate-500">Total Sacado</p>
+              <p className="text-3xl font-bold mt-1 text-orange-600">
+                R$ {totalWithdrawn.toFixed(2)}
+              </p>
+            </div>
+            <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+              <p className="text-sm text-slate-500">Saldo Atual</p>
+              <p className="text-3xl font-bold mt-1 text-emerald-600">
+                R$ {balance.toFixed(2)}
+              </p>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="mb-6">
@@ -139,7 +160,7 @@ export default function ComissoesPage() {
                 />
                 {balance > 0 && (
                   <p className="text-xs text-slate-400 mt-1">
-                    Saldo disponível: R$ {balance.toFixed(2)}
+                    Saldo disponivel: R$ {balance.toFixed(2)}
                   </p>
                 )}
               </div>
@@ -165,15 +186,19 @@ export default function ComissoesPage() {
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-200">
-          <h3 className="font-semibold">Projetos Concluídos</h3>
+          <h3 className="font-semibold">Projetos Concluidos</h3>
           {completingIds.length === 0 && (
             <p className="text-xs text-slate-400 mt-1">
-              Marque tags como &quot;finalizadora&quot; na página de Tags para
-              liberar comissões.
+              Marque tags como &quot;finalizadora&quot; na pagina de Tags para
+              liberar comissoes.
             </p>
           )}
         </div>
-        {completedProjects.length === 0 ? (
+        {loading ? (
+          <div className="p-5">
+            <TableSkeleton />
+          </div>
+        ) : completedProjects.length === 0 ? (
           <div className="p-8 text-center text-slate-400 text-sm">
             Nenhum projeto com status finalizador encontrado.
           </div>
@@ -183,7 +208,7 @@ export default function ComissoesPage() {
               <tr className="border-b border-slate-100 text-left text-slate-500">
                 <th className="px-5 py-2.5 font-medium">Projeto</th>
                 <th className="px-5 py-2.5 font-medium">Status</th>
-                <th className="px-5 py-2.5 font-medium w-40">Comissão (R$)</th>
+                <th className="px-5 py-2.5 font-medium w-40">Comissao (R$)</th>
               </tr>
             </thead>
             <tbody>
