@@ -1,19 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/data";
+import { getSupabase } from "@/lib/supabase";
+import { readData, seedDefaultTags } from "@/lib/data";
 import { Project } from "@/lib/types";
 
 export async function GET() {
-  const data = readData();
+  await seedDefaultTags();
+  const data = await readData();
   return NextResponse.json(data.projects);
 }
 
 export async function POST(req: NextRequest) {
+  const supabase = getSupabase();
   const body = await req.json();
-  const data = readData();
 
   const now = new Date().toISOString();
+  const projectId = `proj-${Date.now()}`;
+
+  const { error: projectError } = await supabase.from("projects").insert({
+    id: projectId,
+    name: body.name || "",
+    description: body.description || "",
+    tag_id: body.tagId || null,
+    commission: null,
+    created_at: now,
+  });
+
+  if (projectError) {
+    return NextResponse.json({ error: projectError.message }, { status: 500 });
+  }
+
+  await supabase.from("project_history").insert({
+    id: `h-${Date.now()}`,
+    project_id: projectId,
+    date: now,
+    type: "create",
+    description: "Projeto criado",
+  });
+
   const project: Project = {
-    id: `proj-${Date.now()}`,
+    id: projectId,
     name: body.name || "",
     description: body.description || "",
     tagId: body.tagId || null,
@@ -23,9 +48,6 @@ export async function POST(req: NextRequest) {
       { id: `h-${Date.now()}`, date: now, type: "create", description: "Projeto criado" },
     ],
   };
-
-  data.projects.push(project);
-  writeData(data);
 
   return NextResponse.json(project, { status: 201 });
 }

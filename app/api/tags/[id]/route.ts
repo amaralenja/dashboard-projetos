@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/data";
+import { getSupabase } from "@/lib/supabase";
 
 export async function PUT(
   req: NextRequest,
@@ -7,19 +7,40 @@ export async function PUT(
 ) {
   const { id } = await params;
   const body = await req.json();
-  const data = readData();
-  const index = data.tags.findIndex((t) => t.id === id);
-  if (index === -1) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const supabase = getSupabase();
 
-  data.tags[index] = {
-    ...data.tags[index],
-    name: body.name ?? data.tags[index].name,
-    color: body.color ?? data.tags[index].color,
-    isCompleting: body.isCompleting ?? data.tags[index].isCompleting,
-  };
+  const { data: existing, error: fetchError } = await supabase
+    .from("tags")
+    .select("*")
+    .eq("id", id)
+    .single();
 
-  writeData(data);
-  return NextResponse.json(data.tags[index]);
+  if (fetchError || !existing) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (body.name !== undefined) updates.name = body.name;
+  if (body.color !== undefined) updates.color = body.color;
+  if (body.isCompleting !== undefined) updates.is_completing = body.isCompleting;
+
+  const { data: updated, error } = await supabase
+    .from("tags")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    id: updated.id,
+    name: updated.name,
+    color: updated.color,
+    isCompleting: updated.is_completing ?? false,
+  });
 }
 
 export async function DELETE(
@@ -27,14 +48,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const data = readData();
-  const index = data.tags.findIndex((t) => t.id === id);
-  if (index === -1) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const supabase = getSupabase();
 
-  data.tags.splice(index, 1);
-  data.projects.forEach((p) => {
-    if (p.tagId === id) p.tagId = null;
-  });
-  writeData(data);
+  await supabase.from("projects").update({ tag_id: null }).eq("tag_id", id);
+
+  const { error } = await supabase.from("tags").delete().eq("id", id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
   return NextResponse.json({ success: true });
 }

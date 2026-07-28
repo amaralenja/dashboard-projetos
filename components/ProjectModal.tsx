@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Project, Tag, HistoryEntry } from "@/lib/types";
+import { X, Smile, Reply, Pencil, Trash2, MoreHorizontal, ChevronRight, Send } from "lucide-react";
 
 interface Props {
   projectId: string;
@@ -25,11 +26,11 @@ function formatTime(iso: string) {
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
-const typeConfig: Record<string, { icon: string; bg: string }> = {
-  create: { icon: "●", bg: "bg-blue-100 text-blue-700" },
-  status_change: { icon: "◉", bg: "bg-amber-100 text-amber-700" },
-  commission: { icon: "$", bg: "bg-emerald-100 text-emerald-700" },
-  withdrawal: { icon: "↓", bg: "bg-purple-100 text-purple-700" },
+const typeConfig: Record<string, { bg: string }> = {
+  create: { bg: "bg-blue-100 text-blue-700" },
+  status_change: { bg: "bg-amber-100 text-amber-700" },
+  commission: { bg: "bg-emerald-100 text-emerald-700" },
+  withdrawal: { bg: "bg-purple-100 text-purple-700" },
 };
 
 const QUICK_EMOJIS = ["👍", "👎", "❤", "😂", "😮", "😢", "🙏", "✅"];
@@ -161,7 +162,7 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
     return (
       <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
         <div className="bg-white rounded-xl p-8 shadow-xl">
-          <p className="text-red-500">Projeto não encontrado.</p>
+          <p className="text-red-500">Projeto nao encontrado.</p>
           <button onClick={onClose} className="mt-3 text-sm text-slate-600 hover:underline">
             Fechar
           </button>
@@ -210,9 +211,9 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 text-xl leading-none ml-2 p-1 shrink-0"
+            className="text-slate-400 hover:text-slate-700 ml-2 p-1 shrink-0"
           >
-            ×
+            <X size={20} />
           </button>
         </div>
 
@@ -225,7 +226,11 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
                 onClick={() => setShowTimeline(!showTimeline)}
                 className="text-xs font-semibold text-slate-500 uppercase tracking-wider hover:text-slate-700 mb-2 flex items-center gap-1"
               >
-                {showTimeline ? "▾" : "▸"} Histórico de eventos
+                <ChevronRight
+                  size={14}
+                  className={`transition-transform ${showTimeline ? "rotate-90" : ""}`}
+                />
+                Historico de eventos
                 <span className="text-slate-400 font-normal normal-case ml-1">
                   ({autoEvents.length})
                 </span>
@@ -355,9 +360,9 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
                           setOpenMenuId(null);
                         }}
                         title="Reagir"
-                        className="p-1 text-sm hover:bg-slate-100 rounded"
+                        className="p-1 hover:bg-slate-100 rounded"
                       >
-                        😊
+                        <Smile size={14} />
                       </button>
                       <button
                         onClick={(ev) => {
@@ -365,9 +370,9 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
                           startReply(entry);
                         }}
                         title="Responder"
-                        className="p-1 text-sm hover:bg-slate-100 rounded"
+                        className="p-1 hover:bg-slate-100 rounded"
                       >
-                        💬
+                        <Reply size={14} />
                       </button>
                       <button
                         onClick={(ev) => {
@@ -375,9 +380,9 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
                           startEdit(entry);
                         }}
                         title="Editar"
-                        className="p-1 text-sm hover:bg-slate-100 rounded"
+                        className="p-1 hover:bg-slate-100 rounded"
                       >
-                        ✏️
+                        <Pencil size={14} />
                       </button>
                       <button
                         onClick={(ev) => {
@@ -385,9 +390,9 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
                           handleDelete(entry.id);
                         }}
                         title="Excluir"
-                        className="p-1 text-sm hover:bg-slate-100 rounded"
+                        className="p-1 hover:bg-slate-100 rounded"
                       >
-                        🗑️
+                        <Trash2 size={14} />
                       </button>
                       {/* Mobile tap toggle */}
                       <button
@@ -396,9 +401,9 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
                           setOpenMenuId(menuOpen ? null : entry.id);
                           setEmojiPickerId(null);
                         }}
-                        className="p-1 text-xs text-slate-400 hover:text-slate-600 rounded sm:hidden"
+                        className="p-1 text-slate-400 hover:text-slate-600 rounded sm:hidden"
                       >
-                        •••
+                        <MoreHorizontal size={14} />
                       </button>
                     </div>
 
@@ -444,9 +449,9 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
               </div>
               <button
                 onClick={() => setReplyTo(null)}
-                className="text-slate-400 hover:text-slate-600 ml-2 text-sm shrink-0"
+                className="text-slate-400 hover:text-slate-600 ml-2 shrink-0"
               >
-                ×
+                <X size={14} />
               </button>
             </div>
           )}
@@ -466,7 +471,7 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
               disabled={saving || !note.trim()}
               className="bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
             >
-              Enviar
+              <Send size={16} />
             </button>
           </div>
           <p className="text-[10px] text-slate-400 mt-1.5">

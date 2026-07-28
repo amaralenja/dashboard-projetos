@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/data";
+import { getSupabase } from "@/lib/supabase";
+import { readData } from "@/lib/data";
 import { Withdrawal } from "@/lib/types";
 
 export async function GET() {
-  const data = readData();
+  const data = await readData();
   return NextResponse.json(data.withdrawals);
 }
 
 export async function POST(req: NextRequest) {
+  const supabase = getSupabase();
   const body = await req.json();
-  const data = readData();
 
   const withdrawal: Withdrawal = {
     id: `wdl-${Date.now()}`,
@@ -18,8 +19,16 @@ export async function POST(req: NextRequest) {
     createdAt: new Date().toISOString(),
   };
 
-  data.withdrawals.push(withdrawal);
-  writeData(data);
+  const { error } = await supabase.from("withdrawals").insert({
+    id: withdrawal.id,
+    date: withdrawal.date,
+    amount: withdrawal.amount,
+    created_at: withdrawal.createdAt,
+  });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json(withdrawal, { status: 201 });
 }

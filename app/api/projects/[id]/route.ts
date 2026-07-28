@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/data";
+import { getSupabase } from "@/lib/supabase";
+import { readData } from "@/lib/data";
 import { HistoryEntry } from "@/lib/types";
 
-function getTagName(data: ReturnType<typeof readData>, tagId: string | null): string {
+function getTagName(tags: { id: string; name: string }[], tagId: string | null): string {
   if (!tagId) return "Sem status";
-  const tag = data.tags.find((t) => t.id === tagId);
+  const tag = tags.find((t) => t.id === tagId);
   return tag ? tag.name : "Desconhecido";
 }
 
@@ -13,10 +14,34 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const data = readData();
-  const project = data.projects.find((p) => p.id === id);
-  if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(project);
+  const supabase = getSupabase();
+
+  const { data: project, error } = await supabase
+    .from("projects")
+    .select("*, history:project_history(*)")
+    .eq("id", id)
+    .single();
+
+  if (error || !project) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    id: project.id,
+    name: project.name,
+    description: project.description || "",
+    tagId: project.tag_id || null,
+    commission: project.commission ?? null,
+    createdAt: project.created_at,
+    history: (project.history || []).map((h: Record<string, unknown>) => ({
+      id: h.id,
+      date: h.date,
+      type: h.type,
+      description: h.description,
+      replyTo: h.reply_to || null,
+      reactions: h.reactions || [],
+    })),
+  });
 }
 
 export async function PUT(
@@ -25,18 +50,36 @@ export async function PUT(
 ) {
   const { id } = await params;
   const body = await req.json();
-  const data = readData();
-  const index = data.projects.findIndex((p) => p.id === id);
-  if (index === -1) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const supabase = getSupabase();
 
-  const oldTagId = data.projects[index].tagId;
+  const { data: existing, error: fetchError } = await supabase
+    .from("projects")
+    .select("tag_id, history:project_history(*)")
+    .eq("id", id)
+    .single();
+
+  if (fetchError || !existing) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const oldTagId = existing.tag_id as string | null;
   const newTagId = body.tagId !== undefined ? body.tagId : oldTagId;
 
   const newHistory: HistoryEntry[] = [];
 
   if (body.note && typeof body.note === "string" && body.note.trim()) {
+    const historyId = `h-${Date.now()}`;
+    await supabase.from("project_history").insert({
+      id: historyId,
+      project_id: id,
+      date: new Date().toISOString(),
+      type: "note",
+      description: body.note.trim(),
+      reply_to: body.replyTo || null,
+      reactions: [],
+    });
     newHistory.push({
-      id: `h-${Date.now()}`,
+      id: historyId,
       date: new Date().toISOString(),
       type: "note",
       description: body.note.trim(),
@@ -46,55 +89,100 @@ export async function PUT(
   }
 
   if (body.editEntryId && typeof body.editText === "string") {
-    const hIdx = data.projects[index].history.findIndex((h) => h.id === body.editEntryId);
-    if (hIdx !== -1 && data.projects[index].history[hIdx].type === "note") {
-      data.projects[index].history[hIdx].description = body.editText.trim();
-      data.projects[index].history[hIdx].date = new Date().toISOString();
-    }
+    await supabase
+      .from("project_history")
+      .update({ description: body.editText.trim(), date: new Date().toISOString() })
+      .eq("id", body.editEntryId)
+      .eq("project_id", id);
   }
 
   if (body.deleteEntryId) {
-    data.projects[index].history = data.projects[index].history.filter(
-      (h) => h.id !== body.deleteEntryId
-    );
+    await supabase
+      .from("project_history")
+      .delete()
+      .eq("id", body.deleteEntryId)
+      .eq("project_id", id);
   }
 
   if (body.reactEntryId && body.emoji) {
-    const hIdx = data.projects[index].history.findIndex((h) => h.id === body.reactEntryId);
-    if (hIdx !== -1) {
-      const entry = data.projects[index].history[hIdx];
-      if (!entry.reactions) entry.reactions = [];
-      const idx = entry.reactions.indexOf(body.emoji);
+    const { data: entryData } = await supabase
+      .from("project_history")
+      .select("reactions")
+      .eq("id", body.reactEntryId)
+      .single();
+
+    if (entryData) {
+      const reactions: string[] = entryData.reactions || [];
+      const idx = reactions.indexOf(body.emoji);
       if (idx === -1) {
-        entry.reactions.push(body.emoji);
+        reactions.push(body.emoji);
       } else {
-        entry.reactions.splice(idx, 1);
+        reactions.splice(idx, 1);
       }
+      await supabase
+        .from("project_history")
+        .update({ reactions })
+        .eq("id", body.reactEntryId);
     }
   }
 
   if (body.tagId !== undefined && body.tagId !== oldTagId) {
-    const oldName = getTagName(data, oldTagId);
-    const newName = getTagName(data, newTagId);
+    const { data: tags } = await supabase.from("tags").select("id, name");
+    const allTags = (tags || []) as { id: string; name: string }[];
+    const oldName = getTagName(allTags, oldTagId);
+    const newName = getTagName(allTags, newTagId);
+    const historyId = `h-${Date.now() + 1}`;
+    await supabase.from("project_history").insert({
+      id: historyId,
+      project_id: id,
+      date: new Date().toISOString(),
+      type: "status_change",
+      description: `Status alterado de "${oldName}" para "${newName}"`,
+    });
     newHistory.push({
-      id: `h-${Date.now() + 1}`,
+      id: historyId,
       date: new Date().toISOString(),
       type: "status_change",
       description: `Status alterado de "${oldName}" para "${newName}"`,
     });
   }
 
-  data.projects[index] = {
-    ...data.projects[index],
-    name: body.name ?? data.projects[index].name,
-    description: body.description ?? data.projects[index].description,
-    tagId: newTagId,
-    commission: body.commission !== undefined ? body.commission : data.projects[index].commission,
-    history: [...data.projects[index].history, ...newHistory],
-  };
+  await supabase
+    .from("projects")
+    .update({
+      name: body.name,
+      description: body.description,
+      tag_id: newTagId,
+      commission: body.commission !== undefined ? body.commission : undefined,
+    })
+    .eq("id", id);
 
-  writeData(data);
-  return NextResponse.json(data.projects[index]);
+  const { data: updated } = await supabase
+    .from("projects")
+    .select("*, history:project_history(*)")
+    .eq("id", id)
+    .single();
+
+  if (!updated) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    id: updated.id,
+    name: updated.name,
+    description: updated.description || "",
+    tagId: updated.tag_id || null,
+    commission: updated.commission ?? null,
+    createdAt: updated.created_at,
+    history: (updated.history || []).map((h: Record<string, unknown>) => ({
+      id: h.id,
+      date: h.date,
+      type: h.type,
+      description: h.description,
+      replyTo: h.reply_to || null,
+      reactions: h.reactions || [],
+    })),
+  });
 }
 
 export async function DELETE(
@@ -102,11 +190,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const data = readData();
-  const index = data.projects.findIndex((p) => p.id === id);
-  if (index === -1) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const supabase = getSupabase();
 
-  data.projects.splice(index, 1);
-  writeData(data);
+  const { error } = await supabase.from("projects").delete().eq("id", id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
   return NextResponse.json({ success: true });
 }

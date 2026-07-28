@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/data";
+import { getSupabase } from "@/lib/supabase";
+import { readData, seedDefaultTags } from "@/lib/data";
 import { Tag } from "@/lib/types";
 
 export async function GET() {
-  const data = readData();
+  await seedDefaultTags();
+  const data = await readData();
   return NextResponse.json(data.tags);
 }
 
 export async function POST(req: NextRequest) {
+  const supabase = getSupabase();
   const body = await req.json();
-  const data = readData();
 
   const tag: Tag = {
     id: `tag-${Date.now()}`,
@@ -18,8 +20,17 @@ export async function POST(req: NextRequest) {
     isCompleting: body.isCompleting ?? false,
   };
 
-  data.tags.push(tag);
-  writeData(data);
+  const { error } = await supabase.from("tags").insert({
+    id: tag.id,
+    name: tag.name,
+    color: tag.color,
+    is_completing: tag.isCompleting,
+    created_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json(tag, { status: 201 });
 }
