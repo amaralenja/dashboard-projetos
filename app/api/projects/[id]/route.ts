@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getSupabase } from "@/lib/supabase";
+﻿import { NextRequest, NextResponse } from "next/server";
+import { getAuthSupabase } from "@/lib/supabase";
 import { readData } from "@/lib/data";
 import { HistoryEntry, Project } from "@/lib/types";
 
@@ -38,7 +38,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = getSupabase();
+  const supabase = await getAuthSupabase();
 
   const { data: project, error } = await supabase
     .from("projects")
@@ -59,7 +59,7 @@ export async function PUT(
 ) {
   const { id } = await params;
   const body = await req.json();
-  const supabase = getSupabase();
+  const supabase = await getAuthSupabase();
 
   const { data: existing, error: fetchError } = await supabase
     .from("projects")
@@ -192,7 +192,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = getSupabase();
+  const supabase = await getAuthSupabase();
 
   const { error } = await supabase.from("projects").delete().eq("id", id);
 

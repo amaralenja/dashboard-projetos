@@ -149,8 +149,10 @@ export default function ProjetosPage() {
     };
 
     try {
-      const res = await fetch(editing ? `/api/projects/${editing.id}` : "/api/projects", {
-        method: editing ? "PUT" : "POST",
+      const url = editing ? `/api/projects/${editing.id}` : "/api/projects";
+      const method = editing ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });

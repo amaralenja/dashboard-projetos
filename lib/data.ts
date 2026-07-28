@@ -1,4 +1,4 @@
-import { getSupabase } from "./supabase";
+import { SupabaseClient } from "@supabase/supabase-js";
 import { AppData, HistoryEntry, Project, Tag, Withdrawal } from "./types";
 
 function mapTag(db: Record<string, unknown>): Tag {
@@ -47,12 +47,12 @@ function mapWithdrawal(db: Record<string, unknown>): Withdrawal {
   };
 }
 
-export async function readData(): Promise<AppData> {
-  const supabase = getSupabase();
+export async function readData(supabase?: SupabaseClient): Promise<AppData> {
+  const client = supabase;
   const [projectsRes, tagsRes, withdrawalsRes] = await Promise.all([
-    supabase.from("projects").select("*, history:project_history(*)").order("created_at", { foreignTable: "project_history", ascending: true }),
-    supabase.from("tags").select("*").order("created_at"),
-    supabase.from("withdrawals").select("*"),
+    client!.from("projects").select("*, history:project_history(*)").order("created_at", { foreignTable: "project_history", ascending: true }),
+    client!.from("tags").select("*").order("created_at"),
+    client!.from("withdrawals").select("*"),
   ]);
 
   const tags = (tagsRes.data || []).map(mapTag);
@@ -62,9 +62,9 @@ export async function readData(): Promise<AppData> {
   return { projects, tags, withdrawals };
 }
 
-export async function seedDefaultTags(): Promise<void> {
-  const supabase = getSupabase();
-  const { data } = await supabase.from("tags").select("id").limit(1);
+export async function seedDefaultTags(supabase?: SupabaseClient): Promise<void> {
+  const client = supabase;
+  const { data } = await client!.from("tags").select("id").limit(1);
   if (data && data.length > 0) return;
 
   const defaults = [
@@ -75,5 +75,5 @@ export async function seedDefaultTags(): Promise<void> {
     { id: "tag-5", name: "Cancelado", color: "#ef4444", is_completing: false },
   ];
 
-  await supabase.from("tags").upsert(defaults, { onConflict: "id" });
+  await client!.from("tags").upsert(defaults, { onConflict: "id" });
 }

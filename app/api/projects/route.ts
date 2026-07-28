@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabase } from "@/lib/supabase";
+import { getAuthSupabase } from "@/lib/supabase";
 import { readData, seedDefaultTags } from "@/lib/data";
 import { Project } from "@/lib/types";
 
 export async function GET() {
-  await seedDefaultTags();
-  const data = await readData();
+  const supabase = await getAuthSupabase();
+  await seedDefaultTags(supabase);
+  const data = await readData(supabase);
   return NextResponse.json(data.projects);
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = getSupabase();
+  const supabase = await getAuthSupabase();
   const body = await req.json();
 
   const now = new Date().toISOString();

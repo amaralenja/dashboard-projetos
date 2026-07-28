@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabase } from "@/lib/supabase";
+import { getAuthSupabase } from "@/lib/supabase";
 import { readData } from "@/lib/data";
 import { Withdrawal } from "@/lib/types";
 
 export async function GET() {
-  const data = await readData();
+  const supabase = await getAuthSupabase();
+  const data = await readData(supabase);
   return NextResponse.json(data.withdrawals);
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = getSupabase();
+  const supabase = await getAuthSupabase();
   const body = await req.json();
 
   const withdrawal: Withdrawal = {

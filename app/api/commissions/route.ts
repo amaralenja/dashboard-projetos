@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabase } from "@/lib/supabase";
+import { getAuthSupabase } from "@/lib/supabase";
 
 export async function PUT(req: NextRequest) {
-  const supabase = getSupabase();
+  const supabase = await getAuthSupabase();
   const body = await req.json();
   const { projectId, commission } = body;
 

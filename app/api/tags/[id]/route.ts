@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getSupabase } from "@/lib/supabase";
+﻿import { NextRequest, NextResponse } from "next/server";
+import { getAuthSupabase } from "@/lib/supabase";
 
 export async function PUT(
   req: NextRequest,
@@ -7,7 +7,7 @@ export async function PUT(
 ) {
   const { id } = await params;
   const body = await req.json();
-  const supabase = getSupabase();
+  const supabase = await getAuthSupabase();
 
   const { data: existing, error: fetchError } = await supabase
     .from("tags")
@@ -48,7 +48,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = getSupabase();
+  const supabase = await getAuthSupabase();
 
   await supabase.from("projects").update({ tag_id: null }).eq("tag_id", id);
 
