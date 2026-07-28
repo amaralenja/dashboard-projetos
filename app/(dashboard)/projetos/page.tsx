@@ -464,146 +464,116 @@ export default function ProjetosPage() {
             return (
               <div
                 key={p.id}
-                className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all group overflow-hidden"
+                className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-lg hover:-translate-y-0.5 transition-all group cursor-pointer overflow-hidden"
+                onClick={() => setModalProjectId(p.id)}
               >
                 {/* Cover image or colored header */}
                 {coverUrl ? (
-                  <div className="relative h-32 overflow-hidden">
+                  <div className="relative h-36 overflow-hidden">
                     <img
                       src={coverUrl}
                       alt={p.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                    {tag && (
-                      <span
-                        className="absolute bottom-2 left-3 inline-block px-2 py-0.5 rounded-md text-[10px] font-medium text-white"
-                        style={{ backgroundColor: tag.color }}
-                      >
-                        {tag.name}
-                      </span>
-                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                    <div className="absolute bottom-3 left-3 right-3">
+                      <h3 className="font-semibold text-white text-sm truncate">{p.name}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        {tag && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium text-white bg-white/20 backdrop-blur-sm">
+                            {tag.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div
-                    className="h-20 flex items-center justify-center"
-                    style={{ backgroundColor: tag?.color ? `${tag.color}15` : "#f1f5f9" }}
+                    className="h-28 p-5 flex items-end"
+                    style={{ backgroundColor: tag?.color ? `${tag.color}15` : "#f8fafc" }}
                   >
-                    <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-bold"
-                      style={{ backgroundColor: tag?.color || "#94a3b8" }}
-                    >
-                      {p.name.charAt(0).toUpperCase()}
+                    <div className="flex items-start gap-3 w-full">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-bold shrink-0 shadow-sm"
+                        style={{ backgroundColor: tag?.color || "#94a3b8" }}
+                      >
+                        {p.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-sm text-slate-900 truncate">{p.name}</h3>
+                        <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                          <Clock size={10} />
+                          {formatDate(p.createdAt)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* Card body */}
-                <button
-                  onClick={() => setModalProjectId(p.id)}
-                  className="w-full text-left p-5 pb-0"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold text-sm text-slate-900 group-hover:text-blue-600 transition-colors truncate flex-1">
-                      {p.name}
-                    </h3>
-                  </div>
-                  <p className="text-xs text-slate-500 flex items-center gap-1 mb-2">
-                    <Clock size={11} />
-                    {formatDate(p.createdAt)}
-                  </p>
-
+                {/* Info section */}
+                <div className="px-5 py-3">
                   {p.description ? (
-                    <p className="text-xs text-slate-500 line-clamp-2 mb-3 leading-relaxed">
+                    <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-3">
                       {p.description}
                     </p>
                   ) : (
                     <p className="text-xs text-slate-300 italic mb-3">Sem descricao</p>
                   )}
 
-                  {!coverUrl && (
-                    <div className="flex items-center gap-2 flex-wrap mb-3">
-                      {tag ? (
-                        <span
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium text-white"
-                          style={{ backgroundColor: tag.color }}
-                        >
-                          {tag.name}
-                        </span>
-                      ) : (
-                        <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-500">
-                          Sem status
-                        </span>
-                      )}
-                      {p.commission !== null && p.commission > 0 && (
-                        <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700">
-                          R$ {p.commission.toFixed(0)}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </button>
-
-                {/* Separator */}
-                <div className="border-t border-slate-100" />
-
-                {/* Card footer */}
-                <div className="px-5 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {p.githubUser && (
-                      <a
-                        href={`https://github.com/${p.githubUser}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-slate-400 hover:text-slate-700 transition-colors"
-                        title={`GitHub @${p.githubUser}`}
+                  <div className="flex items-center gap-1.5 flex-wrap mb-3">
+                    {!coverUrl && tag && (
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium text-white"
+                        style={{ backgroundColor: tag.color }}
                       >
-                        <GitBranch size={15} />
-                      </a>
+                        {tag.name}
+                      </span>
+                    )}
+                    {!coverUrl && !tag && (
+                      <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-500">
+                        Sem status
+                      </span>
+                    )}
+                    {p.commission !== null && p.commission > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-emerald-50 text-emerald-700">
+                        R$ {p.commission.toFixed(0)}
+                      </span>
+                    )}
+                    {p.githubUser && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600">
+                        <GitBranch size={10} />
+                        {p.githubUser}
+                      </span>
                     )}
                     {p.vercelAccount && (
-                      <a
-                        href={`https://vercel.com/${p.vercelAccount}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-slate-400 hover:text-slate-700 transition-colors"
-                        title={`Vercel ${p.vercelAccount}`}
-                      >
-                        <Cloud size={15} />
-                      </a>
-                    )}
-                    {p.projectUrl && (
-                      <a
-                        href={p.projectUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-slate-400 hover:text-slate-700 transition-colors"
-                        title="Site do projeto"
-                      >
-                        <ExternalLink size={15} />
-                      </a>
-                    )}
-                    {!p.githubUser && !p.vercelAccount && !p.projectUrl && (
-                      <span className="text-[10px] text-slate-300">Sem links</span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600">
+                        <Cloud size={10} />
+                        {p.vercelAccount}
+                      </span>
                     )}
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+
+                  {/* Action buttons - always visible */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setModalProjectId(p.id); }}
+                      className="flex-1 py-2 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <ExternalLink size={12} />
+                      Abrir
+                    </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); openEdit(p); }}
-                      className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-                      title="Editar"
+                      className="px-3 py-2 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-1"
                     >
-                      <Pencil size={14} />
+                      <Pencil size={12} />
+                      Editar
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
-                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Excluir"
+                      className="px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center gap-1"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={12} />
                     </button>
                   </div>
                 </div>
