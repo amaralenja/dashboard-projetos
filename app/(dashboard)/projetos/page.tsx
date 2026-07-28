@@ -1,29 +1,25 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Project } from "@/lib/types";
 import ProjectModal from "@/components/ProjectModal";
 import { fetchProjects, fetchTags, queryKeys } from "@/lib/queries";
-import { GitBranch, Cloud, ExternalLink, FileText, Clock, Plus, Pencil, Trash2, AlertCircle, FolderKanban } from "lucide-react";
+import { GitBranch, Cloud, ExternalLink, Clock, Plus, Pencil, Trash2, AlertCircle, FolderKanban, ImageIcon, Upload } from "lucide-react";
 
 const GITHUB_PRESET = "amaralenja";
 const VERCEL_PRESET = "amaralenja";
 
 function CardSkeleton() {
   return (
-    <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 animate-pulse">
-      <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-lg bg-slate-200 shrink-0" />
-        <div className="flex-1">
-          <div className="h-5 bg-slate-200 rounded w-3/4 mb-3" />
-          <div className="h-3 bg-slate-100 rounded w-full mb-2" />
-          <div className="h-3 bg-slate-100 rounded w-2/3" />
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 animate-pulse overflow-hidden">
+      <div className="h-32 bg-slate-200" />
+      <div className="p-5">
+        <div className="h-5 bg-slate-200 rounded w-3/4 mb-3" />
+        <div className="h-3 bg-slate-100 rounded w-full mb-2" />
+        <div className="flex gap-1 mt-4">
+          <div className="h-5 bg-slate-100 rounded-full w-20" />
         </div>
-      </div>
-      <div className="flex gap-1 mt-4">
-        <div className="h-5 bg-slate-100 rounded-full w-20" />
-        <div className="h-5 bg-slate-100 rounded-full w-16" />
       </div>
     </div>
   );
@@ -52,6 +48,11 @@ export default function ProjetosPage() {
 
   const [projectUrl, setProjectUrl] = useState("");
 
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [existingImagePath, setExistingImagePath] = useState<string | null>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
   const { data: projects = [], isLoading: loadingProjects } = useQuery({
     queryKey: queryKeys.projects,
     queryFn: fetchProjects,
@@ -64,6 +65,11 @@ export default function ProjetosPage() {
 
   const loading = loadingProjects || loadingTags;
 
+  function getImageUrl(imagePath: string | null): string | null {
+    if (!imagePath) return null;
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/project-docs/${imagePath}`;
+  }
+
   function resetForm() {
     setGithubMode("preset");
     setGithubUser(GITHUB_PRESET);
@@ -72,7 +78,18 @@ export default function ProjetosPage() {
     setVercelAccount(VERCEL_PRESET);
     setVercelCustom("");
     setProjectUrl("");
+    setCoverFile(null);
+    setCoverPreview(null);
+    setExistingImagePath(null);
     setFormError("");
+  }
+
+  function handleCoverSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+    setExistingImagePath(null);
   }
 
   function openNew() {
@@ -119,6 +136,9 @@ export default function ProjetosPage() {
     }
 
     setProjectUrl(p.projectUrl || "");
+    setExistingImagePath(p.imagePath || null);
+    setCoverFile(null);
+    setCoverPreview(null);
     setFormError("");
     setShowForm(true);
   }
@@ -139,6 +159,20 @@ export default function ProjetosPage() {
     setSaving(true);
     setFormError("");
 
+    let imagePath = existingImagePath;
+
+    if (coverFile) {
+      const uploadForm = new FormData();
+      uploadForm.append("file", coverFile);
+      try {
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadForm });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          imagePath = uploadData.path;
+        }
+      } catch {}
+    }
+
     const body = {
       name,
       description,
@@ -146,6 +180,7 @@ export default function ProjetosPage() {
       githubUser: getFinalGithub(),
       vercelAccount: getFinalVercel(),
       projectUrl: projectUrl.trim() || null,
+      imagePath: imagePath || null,
     };
 
     try {
@@ -203,21 +238,6 @@ export default function ProjetosPage() {
         </button>
       </div>
 
-      {/* Filter bar */}
-      {!loading && tags.length > 0 && (
-        <div className="flex gap-2 mb-6 flex-wrap">
-          <button className="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-900 text-white">Todos</button>
-          {tags.map((t) => (
-            <button
-              key={t.id}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors"
-            >
-              {t.name}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Form modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -234,6 +254,53 @@ export default function ProjetosPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Cover image upload */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Capa do Projeto
+                </label>
+                <div
+                  onClick={() => coverInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-xl flex items-center justify-center cursor-pointer hover:border-slate-400 transition-colors overflow-hidden ${
+                    coverPreview || existingImagePath
+                      ? "border-transparent p-0"
+                      : "border-slate-300 p-8"
+                  }`}
+                >
+                  {coverPreview ? (
+                    <img src={coverPreview} alt="Preview" className="w-full h-36 object-cover" />
+                  ) : existingImagePath ? (
+                    <img
+                      src={getImageUrl(existingImagePath) ?? ""}
+                      alt="Capa atual"
+                      className="w-full h-36 object-cover"
+                    />
+                  ) : (
+                    <div className="text-center">
+                      <ImageIcon size={28} className="text-slate-300 mx-auto mb-2" />
+                      <p className="text-xs text-slate-400">Clique para adicionar capa</p>
+                      <p className="text-[10px] text-slate-300 mt-0.5">JPG, PNG ou WebP</p>
+                    </div>
+                  )}
+                </div>
+                {(coverPreview || existingImagePath) && (
+                  <button
+                    type="button"
+                    onClick={() => { setCoverFile(null); setCoverPreview(null); setExistingImagePath(null); }}
+                    className="text-xs text-red-500 hover:underline mt-1"
+                  >
+                    Remover capa
+                  </button>
+                )}
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCoverSelect}
+                  className="hidden"
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Nome
@@ -393,33 +460,58 @@ export default function ProjetosPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {projects.map((p) => {
             const tag = getTag(p.tagId);
+            const coverUrl = getImageUrl(p.imagePath);
             return (
               <div
                 key={p.id}
-                className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all group"
+                className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all group overflow-hidden"
               >
+                {/* Cover image or colored header */}
+                {coverUrl ? (
+                  <div className="relative h-32 overflow-hidden">
+                    <img
+                      src={coverUrl}
+                      alt={p.name}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                    {tag && (
+                      <span
+                        className="absolute bottom-2 left-3 inline-block px-2 py-0.5 rounded-md text-[10px] font-medium text-white"
+                        style={{ backgroundColor: tag.color }}
+                      >
+                        {tag.name}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    className="h-20 flex items-center justify-center"
+                    style={{ backgroundColor: tag?.color ? `${tag.color}15` : "#f1f5f9" }}
+                  >
+                    <div
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-bold"
+                      style={{ backgroundColor: tag?.color || "#94a3b8" }}
+                    >
+                      {p.name.charAt(0).toUpperCase()}
+                    </div>
+                  </div>
+                )}
+
                 {/* Card body */}
                 <button
                   onClick={() => setModalProjectId(p.id)}
                   className="w-full text-left p-5 pb-0"
                 >
-                  <div className="flex items-start gap-3 mb-3">
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-white text-xs font-bold"
-                      style={{ backgroundColor: tag?.color || "#94a3b8" }}
-                    >
-                      {p.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-sm text-slate-900 group-hover:text-blue-600 transition-colors truncate">
-                        {p.name}
-                      </h3>
-                      <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-                        <Clock size={11} />
-                        {formatDate(p.createdAt)}
-                      </p>
-                    </div>
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-semibold text-sm text-slate-900 group-hover:text-blue-600 transition-colors truncate flex-1">
+                      {p.name}
+                    </h3>
                   </div>
+                  <p className="text-xs text-slate-500 flex items-center gap-1 mb-2">
+                    <Clock size={11} />
+                    {formatDate(p.createdAt)}
+                  </p>
 
                   {p.description ? (
                     <p className="text-xs text-slate-500 line-clamp-2 mb-3 leading-relaxed">
@@ -429,26 +521,27 @@ export default function ProjetosPage() {
                     <p className="text-xs text-slate-300 italic mb-3">Sem descricao</p>
                   )}
 
-                  {/* Tags row */}
-                  <div className="flex items-center gap-2 flex-wrap mb-3">
-                    {tag ? (
-                      <span
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium text-white"
-                        style={{ backgroundColor: tag.color }}
-                      >
-                        {tag.name}
-                      </span>
-                    ) : (
-                      <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-500">
-                        Sem status
-                      </span>
-                    )}
-                    {p.commission !== null && p.commission > 0 && (
-                      <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700">
-                        R$ {p.commission.toFixed(0)}
-                      </span>
-                    )}
-                  </div>
+                  {!coverUrl && (
+                    <div className="flex items-center gap-2 flex-wrap mb-3">
+                      {tag ? (
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium text-white"
+                          style={{ backgroundColor: tag.color }}
+                        >
+                          {tag.name}
+                        </span>
+                      ) : (
+                        <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-500">
+                          Sem status
+                        </span>
+                      )}
+                      {p.commission !== null && p.commission > 0 && (
+                        <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700">
+                          R$ {p.commission.toFixed(0)}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </button>
 
                 {/* Separator */}

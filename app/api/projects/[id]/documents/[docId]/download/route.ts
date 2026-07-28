@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthSupabase } from "@/lib/supabase";
+import { getAuthSupabase, getSupabase } from "@/lib/supabase";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; docId: string }> }
 ) {
   const { id, docId } = await params;
-  const supabase = await getAuthSupabase();
+  const authSupabase = await getAuthSupabase();
+  const storageSupabase = getSupabase();
 
-  const { data: doc, error } = await supabase
+  const { data: doc, error } = await authSupabase
     .from("project_documents")
     .select("file_path")
     .eq("id", docId)
@@ -19,7 +20,7 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const { data } = await supabase.storage
+  const { data } = await storageSupabase.storage
     .from("project-docs")
     .createSignedUrl(doc.file_path, 3600);
 

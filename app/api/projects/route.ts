@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
   if (body.githubUser) insertData.github_user = body.githubUser;
   if (body.vercelAccount) insertData.vercel_account = body.vercelAccount;
   if (body.projectUrl) insertData.project_url = body.projectUrl;
+  if (body.imagePath) insertData.image_path = body.imagePath;
 
   const { error: projectError } = await supabase.from("projects").insert(insertData);
 
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest) {
     githubUser: body.githubUser || null,
     vercelAccount: body.vercelAccount || null,
     projectUrl: body.projectUrl || null,
+    imagePath: body.imagePath || null,
     createdAt: now,
     history: [
       { id: `h-${Date.now()}`, date: now, type: "create", description: "Projeto criado" },

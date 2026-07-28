@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthSupabase } from "@/lib/supabase";
+import { getAuthSupabase, getSupabase } from "@/lib/supabase";
 import { ProjectDocument } from "@/lib/types";
 
 export async function GET(
@@ -36,7 +36,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await getAuthSupabase();
+  const authSupabase = await getAuthSupabase();
+  const storageSupabase = getSupabase();
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
@@ -45,14 +46,13 @@ export async function POST(
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  const fileExt = file.name.split(".").pop() || "";
   const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
   const filePath = `${id}/${fileName}`;
 
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await storageSupabase.storage
     .from("project-docs")
     .upload(filePath, buffer, {
       contentType: file.type,
@@ -64,7 +64,7 @@ export async function POST(
   }
 
   const docId = `doc-${Date.now()}`;
-  const { error: insertError } = await supabase.from("project_documents").insert({
+  const { error: insertError } = await authSupabase.from("project_documents").insert({
     id: docId,
     project_id: id,
     file_name: file.name,

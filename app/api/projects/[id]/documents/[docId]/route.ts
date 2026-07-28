@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthSupabase } from "@/lib/supabase";
+import { getAuthSupabase, getSupabase } from "@/lib/supabase";
 
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; docId: string }> }
 ) {
   const { id, docId } = await params;
-  const supabase = await getAuthSupabase();
+  const authSupabase = await getAuthSupabase();
+  const storageSupabase = getSupabase();
 
-  const { data: doc, error: fetchError } = await supabase
+  const { data: doc, error: fetchError } = await authSupabase
     .from("project_documents")
     .select("file_path")
     .eq("id", docId)
@@ -19,9 +20,9 @@ export async function DELETE(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  await supabase.storage.from("project-docs").remove([doc.file_path]);
+  await storageSupabase.storage.from("project-docs").remove([doc.file_path]);
 
-  const { error } = await supabase
+  const { error } = await authSupabase
     .from("project_documents")
     .delete()
     .eq("id", docId);

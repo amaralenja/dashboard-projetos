@@ -28,6 +28,7 @@ function mapProject(db: Record<string, unknown>): Project {
     description: (db.description as string) || "",
     tagId: (db.tag_id as string) || null,
     commission: (db.commission as number) ?? null,
+    imagePath: (db.image_path as string) || null,
     githubUser: (db.github_user as string) || null,
     vercelAccount: (db.vercel_account as string) || null,
     projectUrl: (db.project_url as string) || null,

@@ -23,6 +23,7 @@ export interface Project {
   githubUser: string | null;
   vercelAccount: string | null;
   projectUrl: string | null;
+  imagePath: string | null;
   createdAt: string;
   history: HistoryEntry[];
 }

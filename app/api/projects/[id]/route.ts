@@ -10,6 +10,7 @@ function mapProjectRow(p: Record<string, unknown>): Project {
     description: (p.description as string) || "",
     tagId: (p.tag_id as string) || null,
     commission: (p.commission as number) ?? null,
+    imagePath: (p.image_path as string) || null,
     githubUser: (p.github_user as string) || null,
     vercelAccount: (p.vercel_account as string) || null,
     projectUrl: (p.project_url as string) || null,
@@ -168,6 +169,8 @@ export async function PUT(
   else if (body.vercelAccount === null && body.vercelAccount !== undefined) updateData.vercel_account = null;
   if (body.projectUrl) updateData.project_url = body.projectUrl;
   else if (body.projectUrl === null && body.projectUrl !== undefined) updateData.project_url = null;
+  if (body.imagePath) updateData.image_path = body.imagePath;
+  else if (body.imagePath === null && body.imagePath !== undefined) updateData.image_path = null;
 
   await supabase
     .from("projects")
