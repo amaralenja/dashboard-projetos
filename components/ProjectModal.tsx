@@ -5,7 +5,7 @@ import { Project, Tag, HistoryEntry, ProjectDocument } from "@/lib/types";
 import {
   X, Smile, Reply, Pencil, Trash2, MoreHorizontal,
   ChevronRight, Send, Paperclip, Download, ExternalLink,
-  GitBranch, Cloud,
+  GitBranch, Cloud, Upload,
 } from "lucide-react";
 
 interface Props {
@@ -309,66 +309,56 @@ export default function ProjectModal({ projectId, tags, onClose }: Props) {
         {/* Body */}
         <div className="flex-1 overflow-y-auto bg-slate-50">
           {/* Documents section */}
-          <div className="px-5 pt-4">
-            <button
-              onClick={() => setShowDocs(!showDocs)}
-              className="text-xs font-semibold text-slate-500 uppercase tracking-wider hover:text-slate-700 mb-2 flex items-center gap-1"
-            >
-              <ChevronRight
-                size={14}
-                className={`transition-transform ${showDocs ? "rotate-90" : ""}`}
-              />
-              Documentos
-              <span className="text-slate-400 font-normal normal-case ml-1">
-                ({documents.length})
-              </span>
-            </button>
-            {showDocs && (
-              <div className="mb-4 space-y-2">
-                {documents.length === 0 ? (
-                  <p className="text-xs text-slate-400 py-2">Nenhum documento anexado.</p>
-                ) : (
-                  documents.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-slate-200 text-xs"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Paperclip size={12} className="text-slate-400 shrink-0" />
-                        <span className="truncate font-medium">{doc.fileName}</span>
-                        <span className="text-slate-400 shrink-0">{formatSize(doc.fileSize)}</span>
-                      </div>
-                      <div className="flex gap-1 shrink-0">
-                        <button
-                          onClick={() => handleDownload(doc)}
-                          className="p-1 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded transition-colors"
-                          title="Download"
-                        >
-                          <Download size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteDoc(doc.id)}
-                          className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                          title="Excluir"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+          <div className="px-5 pt-3 pb-1">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Documentos ({documents.length})
+              </h4>
+              <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-medium hover:bg-slate-800 transition-colors cursor-pointer">
+                <Upload size={12} />
+                {uploading ? "Enviando..." : "Anexar"}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={(e) => handleUpload(e.target.files)}
+                  className="hidden"
+                  disabled={uploading}
+                />
+              </label>
+            </div>
+            {documents.length === 0 ? (
+              <p className="text-xs text-slate-400 py-1 mb-3">Nenhum documento anexado.</p>
+            ) : (
+              <div className="space-y-1.5 mb-3">
+                {documents.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="flex items-center justify-between bg-white rounded-lg px-3 py-1.5 border border-slate-200 text-xs"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Paperclip size={12} className="text-slate-400 shrink-0" />
+                      <span className="truncate font-medium">{doc.fileName}</span>
+                      <span className="text-slate-400 shrink-0">{formatSize(doc.fileSize)}</span>
                     </div>
-                  ))
-                )}
-                <label className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-700 cursor-pointer py-1">
-                  <Paperclip size={12} />
-                  {uploading ? "Enviando..." : "Anexar arquivo"}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    onChange={(e) => handleUpload(e.target.files)}
-                    className="hidden"
-                    disabled={uploading}
-                  />
-                </label>
+                    <div className="flex gap-1 shrink-0">
+                      <button
+                        onClick={() => handleDownload(doc)}
+                        className="p-1 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded transition-colors"
+                        title="Download"
+                      >
+                        <Download size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteDoc(doc.id)}
+                        className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                        title="Excluir"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
