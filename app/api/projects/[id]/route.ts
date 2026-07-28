@@ -58,128 +58,118 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const body = await req.json();
-  const supabase = await getAuthSupabase();
+  try {
+    const { id } = await params;
+    const body = await req.json();
+    const supabase = await getAuthSupabase();
 
-  const { data: existing, error: fetchError } = await supabase
-    .from("projects")
-    .select("tag_id, history:project_history(*)")
-    .eq("id", id)
-    .single();
-
-  if (fetchError || !existing) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  const oldTagId = existing.tag_id as string | null;
-  const newTagId = body.tagId !== undefined ? body.tagId : oldTagId;
-
-  const newHistory: HistoryEntry[] = [];
-
-  if (body.note && typeof body.note === "string" && body.note.trim()) {
-    const historyId = `h-${Date.now()}`;
-    await supabase.from("project_history").insert({
-      id: historyId,
-      project_id: id,
-      date: new Date().toISOString(),
-      type: "note",
-      description: body.note.trim(),
-      reply_to: body.replyTo || null,
-      reactions: [],
-    });
-    newHistory.push({
-      id: historyId,
-      date: new Date().toISOString(),
-      type: "note",
-      description: body.note.trim(),
-      replyTo: body.replyTo || null,
-      reactions: [],
-    });
-  }
-
-  if (body.editEntryId && typeof body.editText === "string") {
-    await supabase
-      .from("project_history")
-      .update({ description: body.editText.trim(), date: new Date().toISOString() })
-      .eq("id", body.editEntryId)
-      .eq("project_id", id);
-  }
-
-  if (body.deleteEntryId) {
-    await supabase
-      .from("project_history")
-      .delete()
-      .eq("id", body.deleteEntryId)
-      .eq("project_id", id);
-  }
-
-  if (body.reactEntryId && body.emoji) {
-    const { data: entryData } = await supabase
-      .from("project_history")
-      .select("reactions")
-      .eq("id", body.reactEntryId)
+    const { data: existing, error: fetchError } = await supabase
+      .from("projects")
+      .select("tag_id")
+      .eq("id", id)
       .single();
 
-    if (entryData) {
-      const reactions: string[] = entryData.reactions || [];
-      const idx = reactions.indexOf(body.emoji);
-      if (idx === -1) {
-        reactions.push(body.emoji);
-      } else {
-        reactions.splice(idx, 1);
-      }
+    if (fetchError || !existing) {
+      return NextResponse.json({ error: "Projeto nao encontrado" }, { status: 404 });
+    }
+
+    const oldTagId = existing.tag_id as string | null;
+    const newTagId = body.tagId !== undefined ? body.tagId : oldTagId;
+
+    if (body.note && typeof body.note === "string" && body.note.trim()) {
+      await supabase.from("project_history").insert({
+        id: `h-${Date.now()}`,
+        project_id: id,
+        date: new Date().toISOString(),
+        type: "note",
+        description: body.note.trim(),
+        reply_to: body.replyTo || null,
+        reactions: [],
+      });
+    }
+
+    if (body.editEntryId && typeof body.editText === "string") {
       await supabase
         .from("project_history")
-        .update({ reactions })
-        .eq("id", body.reactEntryId);
+        .update({ description: body.editText.trim(), date: new Date().toISOString() })
+        .eq("id", body.editEntryId)
+        .eq("project_id", id);
     }
+
+    if (body.deleteEntryId) {
+      await supabase
+        .from("project_history")
+        .delete()
+        .eq("id", body.deleteEntryId)
+        .eq("project_id", id);
+    }
+
+    if (body.reactEntryId && body.emoji) {
+      const { data: entryData } = await supabase
+        .from("project_history")
+        .select("reactions")
+        .eq("id", body.reactEntryId)
+        .single();
+
+      if (entryData) {
+        const reactions: string[] = Array.isArray(entryData.reactions) ? entryData.reactions : [];
+        const idx = reactions.indexOf(body.emoji);
+        if (idx === -1) reactions.push(body.emoji);
+        else reactions.splice(idx, 1);
+        await supabase
+          .from("project_history")
+          .update({ reactions })
+          .eq("id", body.reactEntryId);
+      }
+    }
+
+    if (body.tagId !== undefined && body.tagId !== oldTagId) {
+      const { data: tags } = await supabase.from("tags").select("id, name");
+      const allTags = (tags || []) as { id: string; name: string }[];
+      const oldName = getTagName(allTags, oldTagId);
+      const newName = getTagName(allTags, newTagId);
+      await supabase.from("project_history").insert({
+        id: `h-${Date.now() + 1}`,
+        project_id: id,
+        date: new Date().toISOString(),
+        type: "status_change",
+        description: `Status alterado de "${oldName}" para "${newName}"`,
+      });
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (body.name !== undefined) updateData.name = body.name || "";
+    if (body.description !== undefined) updateData.description = body.description || "";
+    updateData.tag_id = newTagId;
+    if (body.commission !== undefined) updateData.commission = body.commission;
+    if (body.githubUser !== undefined) updateData.github_user = body.githubUser || null;
+    if (body.vercelAccount !== undefined) updateData.vercel_account = body.vercelAccount || null;
+    if (body.projectUrl !== undefined) updateData.project_url = body.projectUrl || null;
+    if (body.imagePath !== undefined) updateData.image_path = body.imagePath || null;
+
+    const { error: updateError } = await supabase
+      .from("projects")
+      .update(updateData)
+      .eq("id", id);
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    const { data: updated, error: refetchError } = await supabase
+      .from("projects")
+      .select("*, history:project_history(*)")
+      .eq("id", id)
+      .single();
+
+    if (refetchError || !updated) {
+      return NextResponse.json(mapProjectRow({ id, name: body.name, description: body.description, tag_id: newTagId, commission: undefined, github_user: undefined, vercel_account: undefined, project_url: undefined, image_path: undefined, created_at: "", history: [] } as Record<string, unknown>));
+    }
+
+    return NextResponse.json(mapProjectRow(updated as Record<string, unknown>));
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Erro interno" }, { status: 500 });
   }
-
-  if (body.tagId !== undefined && body.tagId !== oldTagId) {
-    const { data: tags } = await supabase.from("tags").select("id, name");
-    const allTags = (tags || []) as { id: string; name: string }[];
-    const oldName = getTagName(allTags, oldTagId);
-    const newName = getTagName(allTags, newTagId);
-    const historyId = `h-${Date.now() + 1}`;
-    await supabase.from("project_history").insert({
-      id: historyId,
-      project_id: id,
-      date: new Date().toISOString(),
-      type: "status_change",
-      description: `Status alterado de "${oldName}" para "${newName}"`,
-    });
-    newHistory.push({
-      id: historyId,
-      date: new Date().toISOString(),
-      type: "status_change",
-      description: `Status alterado de "${oldName}" para "${newName}"`,
-    });
-  }
-
-  const updateData: Record<string, unknown> = {};
-
-  if (body.name !== undefined) updateData.name = body.name;
-  if (body.description !== undefined) updateData.description = body.description;
-  updateData.tag_id = newTagId;
-  updateData.commission = body.commission !== undefined ? body.commission : undefined;
-  updateData.github_user = body.githubUser !== undefined ? (body.githubUser || null) : undefined;
-  updateData.vercel_account = body.vercelAccount !== undefined ? (body.vercelAccount || null) : undefined;
-  updateData.project_url = body.projectUrl !== undefined ? (body.projectUrl || null) : undefined;
-  updateData.image_path = body.imagePath !== undefined ? (body.imagePath || null) : undefined;
-
-  const { data: updated, error: updateError } = await supabase
-    .from("projects")
-    .update(updateData)
-    .eq("id", id)
-    .select("*, history:project_history(*)")
-    .single();
-
-  if (updateError || !updated) {
-    return NextResponse.json({ error: updateError?.message || "Update failed" }, { status: 500 });
-  }
-
-  return NextResponse.json(mapProjectRow(updated as Record<string, unknown>));
 }
 
 export async function DELETE(
